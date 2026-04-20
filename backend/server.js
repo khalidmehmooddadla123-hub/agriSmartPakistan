@@ -189,10 +189,11 @@ if (process.env.NODE_ENV !== 'test') {
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-  server.listen(PORT, () => {
-    console.log(`\n✓ AgriSmart360 API running on http://localhost:${PORT}`);
+  // Bind to 0.0.0.0 explicitly so cloud platforms (Render/Railway/Fly) can route traffic
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n✓ AgriSmart360 API listening on 0.0.0.0:${PORT}`);
     console.log(`✓ Mode: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`✓ API docs: http://localhost:${PORT}/api-docs\n`);
+    console.log(`✓ API docs available at /api-docs\n`);
   });
 }
 
