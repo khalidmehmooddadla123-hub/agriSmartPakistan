@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
+import ColdStartNotifier from './components/ColdStartNotifier';
 import './i18n';
 import './index.css';
 import App from './App.jsx';
@@ -16,6 +17,7 @@ createRoot(document.getElementById('root')).render(
         <AuthProvider>
           <SocketProvider>
             <App />
+            <ColdStartNotifier />
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
           </SocketProvider>
         </AuthProvider>

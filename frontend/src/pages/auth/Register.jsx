@@ -21,19 +21,25 @@ export default function Register() {
   const [cities, setCities] = useState([]);
 
   useEffect(() => {
-    locationAPI.getCountries().then(res => setCountries(res.data.data)).catch(() => {});
+    locationAPI.getCountries()
+      .then(res => setCountries(Array.isArray(res.data?.data) ? res.data.data : []))
+      .catch(() => setCountries([]));
   }, []);
 
   useEffect(() => {
     if (form.country) {
-      locationAPI.getProvinces(form.country).then(res => setProvinces(res.data.data)).catch(() => {});
+      locationAPI.getProvinces(form.country)
+        .then(res => setProvinces(Array.isArray(res.data?.data) ? res.data.data : []))
+        .catch(() => setProvinces([]));
       setForm(f => ({ ...f, province: '', city: '', locationID: '' }));
     }
   }, [form.country]);
 
   useEffect(() => {
     if (form.country && form.province) {
-      locationAPI.getCities(form.country, form.province).then(res => setCities(res.data.data)).catch(() => {});
+      locationAPI.getCities(form.country, form.province)
+        .then(res => setCities(Array.isArray(res.data?.data) ? res.data.data : []))
+        .catch(() => setCities([]));
       setForm(f => ({ ...f, city: '', locationID: '' }));
     }
   }, [form.province]);

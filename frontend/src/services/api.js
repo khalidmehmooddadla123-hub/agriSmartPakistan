@@ -4,36 +4,60 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_BASE,
-  headers: { 'Content-Type': 'application/json' }
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 90000   // 90s — accommodates Render free tier cold start wake-up
 });
 
-// Add auth token to requests
+// Helper: sleep
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// Add auth token + set cold-start flag
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Handle token expiry
+// Response interceptor: handle 401 refresh + 502/503 cold start retry + 429
 api.interceptors.response.use(
   response => response,
   async error => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const config = error.config || {};
+
+    // 503/502 — Render free tier is waking up. Retry once after 15s.
+    if ((status === 503 || status === 502 || error.code === 'ERR_NETWORK') && !config._coldRetry) {
+      config._coldRetry = true;
+      // Fire a custom event the UI can listen to for showing "waking up..." toast
+      window.dispatchEvent(new CustomEvent('backend-waking'));
+      await sleep(15000);
+      try {
+        return await api(config);
+      } catch (retryErr) {
+        return Promise.reject(retryErr);
+      }
+    }
+
+    // 401 — JWT expired, try refresh token
+    if (status === 401 && !config._retry) {
       const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken && !error.config._retry) {
-        error.config._retry = true;
+      if (refreshToken) {
+        config._retry = true;
         try {
           const res = await axios.post(`${API_BASE}/auth/refresh-token`, { refreshToken });
           localStorage.setItem('token', res.data.data.token);
           localStorage.setItem('refreshToken', res.data.data.refreshToken);
-          error.config.headers.Authorization = `Bearer ${res.data.data.token}`;
-          return api(error.config);
+          config.headers.Authorization = `Bearer ${res.data.data.token}`;
+          return api(config);
         } catch {
           localStorage.clear();
-          window.location.href = '/login';
+          if (!window.location.pathname.match(/^\/(login|register|forgot|reset)/)) {
+            window.location.href = '/login';
+          }
         }
       }
     }
+
     return Promise.reject(error);
   }
 );

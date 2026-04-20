@@ -17,7 +17,7 @@ const app = express();
 // Security middleware
 app.use(helmet());
 
-// CORS — allow any localhost port in development, configured origin in production
+// CORS — allow localhost (dev) + Vercel (prod) + explicit CLIENT_URL
 const allowedOrigins = [
   process.env.CLIENT_URL,
   'http://localhost:5173',
@@ -26,13 +26,21 @@ const allowedOrigins = [
   'http://localhost:3000'
 ].filter(Boolean);
 
+// Allow any Vercel-hosted domain (covers preview deployments + main)
+const vercelPattern = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
+const localhostPattern = /^http:\/\/localhost:\d+$/;
+
 app.use(cors({
   origin: (origin, cb) => {
+    // Allow same-origin / server-to-server requests (no Origin header)
     if (!origin) return cb(null, true);
-    if (process.env.NODE_ENV === 'development' && /^http:\/\/localhost:\d+$/.test(origin)) {
-      return cb(null, true);
-    }
+    // Allow all localhost in any mode
+    if (localhostPattern.test(origin)) return cb(null, true);
+    // Allow any Vercel deployment
+    if (vercelPattern.test(origin)) return cb(null, true);
+    // Allow explicit whitelist
     if (allowedOrigins.includes(origin)) return cb(null, true);
+    console.warn(`[CORS] Blocked origin: ${origin}`);
     cb(null, false);
   },
   credentials: true
