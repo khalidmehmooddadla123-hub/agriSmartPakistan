@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment variables (NEVER COMMIT!)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Uploads (user-generated content — not for repo)
+uploads/
+**/uploads/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.tgz
+*.zip
+.cache/
+.temp/
+.claude/

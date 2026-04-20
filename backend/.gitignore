@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Environment (contains real API keys — NEVER commit!)
+.env
+.env.local
+.env.production
+
+# User uploads (disease detection images)
+uploads/
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Backups
+*.bak
+*.backup

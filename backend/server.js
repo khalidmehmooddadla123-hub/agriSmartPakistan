@@ -1,0 +1,199 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const dotenv = require('dotenv');
+const connectDB = require('./config/db');
+
+// Load environment variables
+dotenv.config();
+
+// Connect to database
+connectDB();
+
+const app = express();
+
+// Security middleware
+app.use(helmet());
+
+// CORS — allow any localhost port in development, configured origin in production
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:3000'
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    if (process.env.NODE_ENV === 'development' && /^http:\/\/localhost:\d+$/.test(origin)) {
+      return cb(null, true);
+    }
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    cb(null, false);
+  },
+  credentials: true
+}));
+
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window per IP
+  message: { success: false, message: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // stricter for auth routes
+  message: { success: false, message: 'Too many login attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use('/api/', apiLimiter);
+app.use('/api/auth/', authLimiter);
+
+// Body parser
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Logging
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+}
+
+// Swagger API Documentation
+const swaggerUI = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'AgriSmart360 API Docs'
+}));
+
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/locations', require('./routes/locations'));
+app.use('/api/crops', require('./routes/crops'));
+app.use('/api/prices', require('./routes/prices'));
+app.use('/api/weather', require('./routes/weather'));
+app.use('/api/news', require('./routes/news'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/disease', require('./routes/disease'));
+app.use('/api/export', require('./routes/export'));
+app.use('/api/recommendations', require('./routes/recommendations'));
+app.use('/api/outbreaks', require('./routes/outbreaks'));
+app.use('/api/tools', require('./routes/tools'));
+app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/marketplace', require('./routes/marketplace'));
+app.use('/api/forum', require('./routes/forum'));
+app.use('/uploads', require('express').static(require('path').join(__dirname, 'uploads')));
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Error handling middleware
+app.use(require('./middleware/errorHandler'));
+
+// Start cron jobs
+require('./services/cronJobs');
+
+// Socket.io setup
+const http = require('http');
+const { Server } = require('socket.io');
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (process.env.NODE_ENV === 'development' && /^http:\/\/localhost:\d+$/.test(origin)) {
+        return cb(null, true);
+      }
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      cb(null, false);
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
+
+// Track connected users by their userId
+const connectedUsers = new Map();
+
+io.on('connection', (socket) => {
+  console.log(`[SOCKET] Client connected: ${socket.id}`);
+
+  // User joins their personal room after auth
+  socket.on('join', (userId) => {
+    if (userId) {
+      socket.join(`user_${userId}`);
+      connectedUsers.set(socket.id, userId);
+      console.log(`[SOCKET] User ${userId} joined room`);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    const userId = connectedUsers.get(socket.id);
+    connectedUsers.delete(socket.id);
+    if (userId) console.log(`[SOCKET] User ${userId} disconnected`);
+  });
+});
+
+// Make io accessible in routes/services
+app.set('io', io);
+
+const PORT = process.env.PORT || 5000;
+
+// Graceful startup — handle port-in-use gracefully instead of crashing
+if (process.env.NODE_ENV !== 'test') {
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error('\n╔════════════════════════════════════════════════════════════╗');
+      console.error(`║  ⚠️  PORT ${PORT} IS ALREADY IN USE                            ║`);
+      console.error('╠════════════════════════════════════════════════════════════╣');
+      console.error('║  Another process is running on this port. Fix it by:      ║');
+      console.error('║                                                            ║');
+      console.error('║  Windows:  netstat -ano | findstr :5000                   ║');
+      console.error('║            taskkill /PID <PID> /F                         ║');
+      console.error('║                                                            ║');
+      console.error('║  Or set a different port:                                 ║');
+      console.error('║            PORT=5001 npm run dev                          ║');
+      console.error('╚════════════════════════════════════════════════════════════╝\n');
+      process.exit(1);
+    } else {
+      console.error('Server error:', err);
+      process.exit(1);
+    }
+  });
+
+  // Graceful shutdown on Ctrl+C / SIGTERM
+  const shutdown = (signal) => {
+    console.log(`\n[SERVER] Received ${signal}, shutting down gracefully...`);
+    server.close(() => {
+      console.log('[SERVER] HTTP server closed');
+      process.exit(0);
+    });
+    setTimeout(() => {
+      console.error('[SERVER] Forcing shutdown (timeout)');
+      process.exit(1);
+    }, 5000);
+  };
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+  server.listen(PORT, () => {
+    console.log(`\n✓ AgriSmart360 API running on http://localhost:${PORT}`);
+    console.log(`✓ Mode: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`✓ API docs: http://localhost:${PORT}/api-docs\n`);
+  });
+}
+
+module.exports = app;
