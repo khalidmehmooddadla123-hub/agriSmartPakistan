@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
+const dns = require('dns');
+
+// Force Google DNS (some ISPs block MongoDB Atlas SRV lookups)
+dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
 
 dotenv.config({ path: require('path').join(__dirname, '..', '.env') });
 
