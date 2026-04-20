@@ -95,6 +95,27 @@ app.use('/api/marketplace', require('./routes/marketplace'));
 app.use('/api/forum', require('./routes/forum'));
 app.use('/uploads', require('express').static(require('path').join(__dirname, 'uploads')));
 
+// Root — friendly welcome page
+app.get('/', (req, res) => {
+  res.json({
+    name: 'AgriSmart360 API',
+    status: 'live',
+    version: '1.0.0',
+    description: 'Smart Agriculture Management Platform for Pakistani Farmers',
+    endpoints: {
+      health: '/api/health',
+      docs: '/api-docs',
+      auth: '/api/auth/login',
+      crops: '/api/crops',
+      prices: '/api/prices/latest',
+      weather: '/api/weather/:locationID',
+      news: '/api/news'
+    },
+    author: 'Khalid Mehmood — FYP, IUB',
+    frontend: process.env.CLIENT_URL || 'http://localhost:5173'
+  });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
