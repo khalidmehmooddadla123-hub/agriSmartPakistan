@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ConfirmProvider } from './components/ui/ConfirmDialog';
 import ColdStartNotifier from './components/ColdStartNotifier';
 import './i18n';
 import './index.css';
@@ -16,9 +17,11 @@ createRoot(document.getElementById('root')).render(
       <ThemeProvider>
         <AuthProvider>
           <SocketProvider>
-            <App />
-            <ColdStartNotifier />
-            <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+            <ConfirmProvider>
+              <App />
+              <ColdStartNotifier />
+              <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+            </ConfirmProvider>
           </SocketProvider>
         </AuthProvider>
       </ThemeProvider>

@@ -107,6 +107,8 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/uploads', require('./routes/uploads'));
 app.use('/api/soil-tests', require('./routes/soilTests'));
 app.use('/api/equipment', require('./routes/equipment'));
+app.use('/api/crop-loss', require('./routes/cropLoss'));
+app.use('/api/crop-id', require('./routes/cropID'));
 app.use('/uploads', require('express').static(require('path').join(__dirname, 'uploads')));
 
 // Root — friendly welcome page

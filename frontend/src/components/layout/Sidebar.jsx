@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   FiHome, FiDollarSign, FiCloud, FiFileText, FiBell, FiUser, FiSettings,
   FiX, FiSearch, FiMap, FiTool, FiShoppingCart, FiMessageSquare, FiCreditCard, FiLogOut,
-  FiCalendar, FiPackage, FiFile, FiActivity, FiTruck, FiHelpCircle
+  FiCalendar, FiPackage, FiFile, FiActivity, FiTruck, FiHelpCircle, FiAlertCircle
 } from 'react-icons/fi';
 
 const navSections = [
@@ -26,6 +26,7 @@ const navSections = [
       { path: '/farms', icon: FiPackage, labelKey: 'nav.farms' },
       { path: '/calendar', icon: FiCalendar, labelKey: 'nav.calendar' },
       { path: '/soil-tests', icon: FiActivity, labelKey: 'nav.soilTests' },
+      { path: '/crop-loss', icon: FiAlertCircle, labelKey: 'nav.cropLoss' },
     ]
   },
   {

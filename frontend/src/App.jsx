@@ -34,6 +34,9 @@ import Onboarding from './pages/Onboarding';
 import SoilTests from './pages/SoilTests';
 import Equipment from './pages/Equipment';
 import Help from './pages/Help';
+import CropLoss from './pages/CropLoss';
+import LoanCalc from './pages/tools/LoanCalc';
+import CropIdentifier from './pages/tools/CropIdentifier';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -89,6 +92,9 @@ export default function App() {
           <Route path="/soil-tests" element={<ProtectedRoute><SoilTests /></ProtectedRoute>} />
           <Route path="/equipment" element={<ProtectedRoute><Equipment /></ProtectedRoute>} />
           <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+          <Route path="/crop-loss" element={<ProtectedRoute><CropLoss /></ProtectedRoute>} />
+          <Route path="/tools/loan" element={<ProtectedRoute><LoanCalc /></ProtectedRoute>} />
+          <Route path="/tools/identify" element={<ProtectedRoute><CropIdentifier /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/admin/*" element={<AdminRoute><AdminPanel /></AdminRoute>} />
         </Route>

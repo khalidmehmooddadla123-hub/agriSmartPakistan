@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FiDroplet, FiZap, FiTrendingUp, FiRefreshCw, FiHeart, FiDollarSign, FiShoppingCart, FiMessageSquare, FiBook, FiArrowRight } from 'react-icons/fi';
+import { FiDroplet, FiZap, FiTrendingUp, FiRefreshCw, FiHeart, FiDollarSign, FiShoppingCart, FiMessageSquare, FiBook, FiArrowRight, FiCreditCard, FiSearch } from 'react-icons/fi';
 
 const tools = [
   {
@@ -52,6 +52,26 @@ const tools = [
     descEn: 'Calculate obligatory Ushar on harvest per Islamic rules',
     descUr: 'اسلامی اصولوں کے مطابق فصل پر عشر کا حساب',
     tag: 'Islamic', tagUr: 'اسلامی'
+  },
+  {
+    path: '/tools/loan',
+    icon: FiCreditCard, color: 'from-blue-600 to-cyan-600',
+    bg: 'bg-blue-50', text: 'text-blue-600',
+    key: 'loan',
+    titleEn: 'Loan & EMI Calculator', titleUr: 'قرض اور EMI',
+    descEn: 'Calculate monthly EMI for ZTBL, HBL & Akhuwat agri loans',
+    descUr: 'ZTBL، HBL، اخوت کے قرض کے لیے EMI کا حساب',
+    tag: 'Finance', tagUr: 'مالیات'
+  },
+  {
+    path: '/tools/identify',
+    icon: FiSearch, color: 'from-purple-600 to-pink-600',
+    bg: 'bg-purple-50', text: 'text-purple-600',
+    key: 'identify',
+    titleEn: 'AI Crop Identifier', titleUr: 'AI فصل کی شناخت',
+    descEn: 'Upload a photo — AI tells you what crop it is',
+    descUr: 'تصویر اپ لوڈ کریں — AI فصل پہچانے گا',
+    tag: 'AI Vision', tagUr: 'AI ویژن'
   },
   {
     path: '/expenses',

@@ -311,3 +311,56 @@ Return ONLY valid JSON with this shape:
 };
 
 exports.isAIAvailable = () => !!getClient();
+
+/**
+ * Identify crop from an image (uses Gemini Vision)
+ */
+exports.identifyCrop = async (imageBuffer, mimeType = 'image/jpeg', language = 'en') => {
+  const client = getClient();
+  if (!client) return null;
+
+  const prompt = `You are a Pakistani agriculture expert. Look at this crop image and identify it.
+
+Return ONLY valid JSON:
+{
+  "cropName": "English name of crop",
+  "cropNameUrdu": "اردو نام",
+  "scientificName": "Latin name",
+  "category": "grain | vegetable | fruit | fiber | oilseed | spice | pulse | other",
+  "confidence": 0-100,
+  "growthStage": "seedling | vegetative | flowering | fruiting | mature | harvested | unknown",
+  "isHealthy": true | false,
+  "healthNotes": "Visual health assessment in English (2-3 sentences)",
+  "healthNotesUrdu": "صحت کا اندازہ اردو میں",
+  "growingTips": "Brief growing tips in English specific to Pakistan",
+  "growingTipsUrdu": "اگانے کے ٹِپس اردو میں",
+  "commonDiseases": ["disease 1", "disease 2", "disease 3"]
+}
+
+If image does NOT show a crop, return: {"cropName": "Not a crop", "confidence": 0, "healthNotes": "The image does not show a recognizable crop."}`;
+
+  let lastErr;
+  for (const modelName of MODEL_CHAIN) {
+    try {
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 1500,
+          responseMimeType: 'application/json'
+        }
+      });
+      const result = await model.generateContent([
+        { inlineData: { data: imageBuffer.toString('base64'), mimeType } },
+        prompt
+      ]);
+      const data = extractJSON(result.response.text().trim());
+      if (data && data.cropName) return data;
+    } catch (err) {
+      lastErr = err;
+      if (!/(503|429|overload)/.test(err.message || '')) break;
+    }
+  }
+  console.error('[AI] Crop ID error:', lastErr?.message);
+  return null;
+};

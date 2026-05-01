@@ -5,9 +5,9 @@ import { useTheme } from '../../context/ThemeContext';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { notificationAPI } from '../../services/api';
-import { FiBell, FiMenu, FiGlobe, FiLogOut, FiUser, FiSun, FiMoon, FiChevronDown } from 'react-icons/fi';
+import { FiBell, FiMenu, FiGlobe, FiLogOut, FiUser, FiSun, FiMoon, FiChevronDown, FiSearch, FiCommand } from 'react-icons/fi';
 
-export default function Navbar({ onMenuClick }) {
+export default function Navbar({ onMenuClick, onSearchClick }) {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const { unreadCount: socketUnread, setCount } = useSocket();
@@ -45,8 +45,27 @@ export default function Navbar({ onMenuClick }) {
           </Link>
         </div>
 
+        {/* Search button (desktop) */}
+        <button
+          onClick={onSearchClick}
+          className="hidden md:flex items-center gap-2 mx-auto bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-500 transition w-full max-w-md"
+          title="Search (Ctrl+K)"
+        >
+          <FiSearch size={15} />
+          <span className="flex-1 text-left rtl:text-right">{i18n.language === 'ur' ? 'تلاش کریں...' : 'Search anything...'}</span>
+          <kbd className="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 font-semibold flex items-center gap-0.5">
+            <FiCommand size={10} /> K
+          </kbd>
+        </button>
+
         {/* Right */}
         <div className="flex items-center gap-1.5">
+          {/* Search button (mobile only) */}
+          <button onClick={onSearchClick}
+            className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-600">
+            <FiSearch size={18} />
+          </button>
+
           {/* Dark Mode */}
           <button
             onClick={toggleDarkMode}

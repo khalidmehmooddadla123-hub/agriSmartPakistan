@@ -8,6 +8,7 @@
     "marketplace": "بازار", "subsidies": "سبسڈیز", "forum": "کمیونٹی",
     "farms": "میرے فارم", "calendar": "فصل کیلنڈر",
     "soilTests": "مٹی ٹیسٹ", "equipment": "مشینری کرایہ", "help": "مدد",
+    "cropLoss": "فصل کا نقصان",
     "register": "رجسٹر", "logout": "لاگ آؤٹ", "language": "زبان"
   },
   "auth": {
