@@ -74,7 +74,7 @@ export default function Sidebar({ open, onClose }) {
     <>
       {open && <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 lg:hidden animate-fade-in-up" onClick={onClose} />}
 
-      <aside className={`fixed top-0 left-0 rtl:right-0 rtl:left-auto z-50 h-full w-[272px] max-w-[85vw] bg-white border-r rtl:border-l rtl:border-r-0 border-gray-100 transform transition-transform duration-300 flex flex-col ${
+      <aside className={`app-sidebar fixed top-0 left-0 rtl:right-0 rtl:left-auto z-50 h-full w-[272px] max-w-[85vw] border-r rtl:border-l rtl:border-r-0 transform transition-transform duration-300 flex flex-col ${
         open
           ? 'translate-x-0'
           : 'max-lg:-translate-x-full max-lg:rtl:translate-x-full lg:translate-x-0'

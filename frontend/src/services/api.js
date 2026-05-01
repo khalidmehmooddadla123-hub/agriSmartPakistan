@@ -1,6 +1,35 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
+// Endpoints we DON'T auto-toast on (caller handles its own errors / silent expected fails)
+const SILENT_ENDPOINTS = [
+  '/auth/me',
+  '/auth/refresh-token',
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password'
+];
+
+const isSilent = (url = '') => SILENT_ENDPOINTS.some(s => url.includes(s));
+
+// De-dupe noisy repeated errors (same message within 3s)
+const recentErrors = new Map();
+function showErrorToast(message) {
+  const now = Date.now();
+  const last = recentErrors.get(message);
+  if (last && now - last < 3000) return;
+  recentErrors.set(message, now);
+  toast.error(message, { duration: 4500, icon: '⚠️' });
+  // GC old entries
+  if (recentErrors.size > 30) {
+    for (const [k, t] of recentErrors) {
+      if (now - t > 10000) recentErrors.delete(k);
+    }
+  }
+}
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -58,16 +87,40 @@ api.interceptors.response.use(
       }
     }
 
+    // Surface errors as toasts so silent .catch handlers across the app
+    // still give the user a visible reason something failed. Skip for endpoints
+    // that handle their own errors (auth flows, the /me probe).
+    const url = config.url || '';
+    if (!isSilent(url) && !config._silentToast) {
+      let message;
+      if (status === 429) {
+        message = error.response?.data?.message || 'Too many requests. Please wait a moment.';
+      } else if (status === 403) {
+        message = error.response?.data?.message || 'You do not have permission to do this.';
+      } else if (status === 404) {
+        message = error.response?.data?.message || 'Resource not found.';
+      } else if (status === 400 || status === 422) {
+        message = error.response?.data?.message || 'Invalid request — check your input.';
+      } else if (status >= 500) {
+        message = error.response?.data?.message || 'Server error. Please try again.';
+      } else if (error.code === 'ECONNABORTED') {
+        message = 'Request timed out. The server may be slow — try again.';
+      } else if (error.code === 'ERR_NETWORK' || !error.response) {
+        message = 'Network error. Check your connection.';
+      } else {
+        message = error.response?.data?.message || error.message || 'Something went wrong.';
+      }
+      showErrorToast(message);
+    }
+
     return Promise.reject(error);
   }
 );
 
-// Auth
+// Auth (email-only)
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
-  requestOTP: (phone) => api.post('/auth/request-otp', { phone }),
-  verifyOTP: (data) => api.post('/auth/verify-otp', data),
   getMe: () => api.get('/auth/me'),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
 };
@@ -123,12 +176,20 @@ export const adminAPI = {
   getUsers: (params) => api.get('/admin/users', { params }),
   updateUserStatus: (id, isActive) => api.put(`/admin/users/${id}/status`, { isActive }),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  // Crops
+  getCrops: (params) => api.get('/admin/crops', { params }),
   createCrop: (data) => api.post('/admin/crops', data),
   updateCrop: (id, data) => api.put(`/admin/crops/${id}`, data),
   deleteCrop: (id) => api.delete(`/admin/crops/${id}`),
+  // Prices
+  getPrices: (params) => api.get('/admin/prices', { params }),
   createPrice: (data) => api.post('/admin/prices', data),
   updatePrice: (id, data) => api.put(`/admin/prices/${id}`, data),
   deletePrice: (id) => api.delete(`/admin/prices/${id}`),
+  // Locations
+  getLocations: (params) => api.get('/admin/locations', { params }),
+  updateLocation: (id, data) => api.put(`/admin/locations/${id}`, data),
+  deleteLocation: (id) => api.delete(`/admin/locations/${id}`),
   createNews: (data) => api.post('/admin/news', data),
   getNews: (params) => api.get('/admin/news', { params }),
   updateNews: (id, data) => api.put(`/admin/news/${id}`, data),
@@ -136,6 +197,16 @@ export const adminAPI = {
   createLocation: (data) => api.post('/admin/locations', data),
   broadcast: (data) => api.post('/admin/notifications/broadcast', data),
   getAnalytics: () => api.get('/admin/analytics'),
+  // Subsidies
+  getSubsidies: () => api.get('/admin/subsidies'),
+  createSubsidy: (data) => api.post('/admin/subsidies', data),
+  updateSubsidy: (id, data) => api.put(`/admin/subsidies/${id}`, data),
+  deleteSubsidy: (id) => api.delete(`/admin/subsidies/${id}`),
+  // Loan Providers
+  getLoanProviders: () => api.get('/admin/loan-providers'),
+  createLoanProvider: (data) => api.post('/admin/loan-providers', data),
+  updateLoanProvider: (id, data) => api.put(`/admin/loan-providers/${id}`, data),
+  deleteLoanProvider: (id) => api.delete(`/admin/loan-providers/${id}`),
 };
 
 // Recommendations
@@ -205,6 +276,18 @@ export const forumAPI = {
   upvote: (id) => api.post(`/forum/${id}/upvote`),
   resolve: (id) => api.put(`/forum/${id}/resolve`),
   delete: (id) => api.delete(`/forum/${id}`),
+};
+
+// Subsidies & Schemes
+export const subsidyAPI = {
+  list: (params) => api.get('/subsidies', { params }),
+  get: (id) => api.get(`/subsidies/${id}`),
+};
+
+// Loan Providers
+export const loanAPI = {
+  list: () => api.get('/loan-providers'),
+  get: (id) => api.get(`/loan-providers/${id}`),
 };
 
 // Export

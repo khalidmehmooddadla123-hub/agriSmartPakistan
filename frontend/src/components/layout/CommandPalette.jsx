@@ -31,6 +31,7 @@ const ROUTES = [
   { path: '/tools/yield', icon: FiTool, en: 'Yield Predictor', ur: 'پیداوار', cat: 'AI', keywords: 'harvest revenue' },
   { path: '/tools/rotation', icon: FiTool, en: 'Crop Rotation', ur: 'فصل کی تبدیلی', cat: 'AI', keywords: 'soil health' },
   { path: '/tools/zakat', icon: FiTool, en: 'Zakat Calculator', ur: 'عشر کیلکولیٹر', cat: 'AI', keywords: 'islamic ushar' },
+  { path: '/tools/units', icon: FiTool, en: 'Unit Converter', ur: 'پیمائش کنورٹر', cat: 'AI', keywords: 'marla kanal acre murabba maund seer hectare bigha jareeb killa' },
 
   // Business
   { path: '/expenses', icon: FiDollarSign, en: 'Expense Tracker', ur: 'اخراجات', cat: 'Business', keywords: 'profit cost money' },
@@ -117,34 +118,46 @@ export default function CommandPalette({ open, onClose }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[150] flex items-start justify-center pt-20 sm:pt-24 px-4 animate-fade-in-up"
+    <div className="fixed inset-0 bg-gradient-to-br from-emerald-900/40 via-black/50 to-emerald-900/40 backdrop-blur-md z-[150] flex items-start justify-center pt-16 sm:pt-24 px-3 sm:px-4 animate-fade-in-up"
       onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
-        className="bg-white rounded-2xl card-floating w-full max-w-xl max-h-[70vh] flex flex-col overflow-hidden">
-        {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
-          <FiSearch className="text-gray-400 shrink-0" size={18} />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={e => { setQuery(e.target.value); setActiveIdx(0); }}
-            placeholder={isUrdu ? 'تلاش کریں...' : 'Search pages, tools, features...'}
-            className="flex-1 outline-none text-sm bg-transparent"
-          />
-          <kbd className="hidden sm:flex text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded font-semibold">ESC</kbd>
-          <button onClick={onClose} className="sm:hidden text-gray-400 hover:text-gray-600">
-            <FiX size={18} />
-          </button>
+        className="bg-white rounded-3xl card-floating w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden border border-emerald-100">
+        {/* Beautiful search input with gradient accent */}
+        <div className="relative px-4 sm:px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-white via-emerald-50/40 to-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-md shadow-emerald-200 shrink-0">
+              <FiSearch className="text-white" size={17} />
+            </div>
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={e => { setQuery(e.target.value); setActiveIdx(0); }}
+              placeholder={isUrdu ? 'صفحات، ٹولز اور خصوصیات تلاش کریں…' : 'Search pages, tools, features…'}
+              className="flex-1 outline-none text-[15px] font-medium bg-transparent placeholder:text-gray-400 placeholder:font-normal"
+            />
+            {query && (
+              <button
+                onClick={() => { setQuery(''); inputRef.current?.focus(); }}
+                className="w-7 h-7 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center transition shrink-0"
+              >
+                <FiX size={14} />
+              </button>
+            )}
+            <kbd className="hidden sm:flex text-[10px] bg-white border border-gray-200 text-gray-500 px-2 py-1 rounded-md font-semibold shadow-sm shrink-0">ESC</kbd>
+            <button onClick={onClose} className="sm:hidden w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center shrink-0">
+              <FiX size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Results */}
         <div className="overflow-y-auto flex-1 py-2">
           {filtered.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <div className="text-5xl mb-2">🔍</div>
-              <p className="text-sm text-gray-500">{isUrdu ? 'کوئی نتیجہ نہیں' : 'No results found'}</p>
-              <p className="text-xs text-gray-400 mt-1">{isUrdu ? 'مختلف الفاظ آزمائیں' : 'Try different keywords'}</p>
+              <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-emerald-50 to-green-100 flex items-center justify-center text-3xl">🔍</div>
+              <p className="text-sm font-semibold text-gray-700">{isUrdu ? 'کوئی نتیجہ نہیں' : 'No results found'}</p>
+              <p className="text-xs text-gray-400 mt-1">{isUrdu ? 'مختلف الفاظ آزمائیں' : 'Try different keywords or browse the categories above'}</p>
             </div>
           ) : (
             Object.entries(grouped).map(([cat, items]) => (

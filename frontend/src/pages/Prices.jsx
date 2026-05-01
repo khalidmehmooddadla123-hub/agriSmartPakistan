@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { priceAPI, cropAPI, locationAPI, exportAPI } from '../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { FiTrendingUp, FiTrendingDown, FiSearch, FiBarChart2, FiMapPin, FiX, FiDownload } from 'react-icons/fi';
-import { SkeletonTable } from '../components/ui/Skeleton';
+import Loader from '../components/ui/Loader';
 
 export default function Prices() {
   const { t, i18n } = useTranslation();
@@ -54,8 +54,11 @@ export default function Prices() {
     const results = locations.filter(loc =>
       loc.city?.toLowerCase().includes(q) ||
       loc.cityUrdu?.includes(locationSearch) ||
-      loc.province?.toLowerCase().includes(q)
-    ).slice(0, 8);
+      loc.district?.toLowerCase().includes(q) ||
+      loc.districtUrdu?.includes(locationSearch) ||
+      loc.province?.toLowerCase().includes(q) ||
+      loc.provinceUrdu?.includes(locationSearch)
+    ).slice(0, 15);
     setLocationResults(results);
   }, [locationSearch, locations]);
 
@@ -64,6 +67,14 @@ export default function Prices() {
     setSelectedLocationName(`${loc.city}, ${loc.province}`);
     setLocationSearch('');
     setLocationResults([]);
+    // Selecting a city only makes sense in Local view — auto-switch
+    setActiveTab('local');
+  };
+
+  const clearCity = () => {
+    setSelectedLocation(null);
+    setSelectedLocationName('');
+    setLocationSearch('');
   };
 
   const showChart = async (crop) => {
@@ -118,28 +129,82 @@ export default function Prices() {
 
   return (
     <div className="space-y-5 animate-fade-in-up">
-      {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-green-600 via-emerald-600 to-teal-600 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-7 text-white card-elevated">
-        <div className="absolute top-0 right-0 rtl:left-0 rtl:right-auto w-44 sm:w-60 h-44 sm:h-60 bg-white/10 rounded-full -mr-16 sm:-mr-20 -mt-16 sm:-mt-20 blur-2xl" />
-        <div className="relative flex items-center justify-between gap-3 sm:gap-4 flex-wrap">
-          <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 backdrop-blur rounded-xl sm:rounded-2xl flex items-center justify-center text-2xl sm:text-3xl shrink-0">💰</div>
-            <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">{t('prices.title')}</h1>
-              <p className="text-green-100 text-xs sm:text-sm mt-1 line-clamp-2">
-                {isUrdu ? 'لائیو منڈی نرخیں' : 'Live market rates, updated every 30 min'}
-              </p>
+      {/* Hero — outer wrapper has NO overflow-hidden so the city search dropdown can extend below */}
+      <div className="relative">
+        <div className="relative bg-gradient-to-br from-green-600 via-emerald-600 to-teal-600 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-7 text-white card-elevated">
+          <div className="absolute inset-0 overflow-hidden rounded-2xl sm:rounded-3xl pointer-events-none">
+            <div className="absolute top-0 right-0 rtl:left-0 rtl:right-auto w-44 sm:w-60 h-44 sm:h-60 bg-white/10 rounded-full -mr-16 sm:-mr-20 -mt-16 sm:-mt-20 blur-2xl" />
+            <div className="absolute -bottom-12 -left-12 rtl:-right-12 rtl:left-auto w-48 h-48 bg-yellow-300/15 rounded-full blur-3xl" />
+          </div>
+
+          <div className="relative flex items-start justify-between gap-3 sm:gap-4 flex-wrap mb-4 sm:mb-5">
+            <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 backdrop-blur rounded-xl sm:rounded-2xl flex items-center justify-center text-2xl sm:text-3xl shrink-0">💰</div>
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">{t('prices.title')}</h1>
+                <p className="text-green-100 text-xs sm:text-sm mt-1 line-clamp-2">
+                  {isUrdu
+                    ? 'سرکاری ذرائع: AMIS پنجاب · PBS · PMEX'
+                    : 'Sources: AMIS Punjab · PBS Wholesale · PMEX'}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button onClick={exportCSV}
+                className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-white/15 backdrop-blur hover:bg-white/25 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition border border-white/20">
+                <FiDownload size={12} /> CSV
+              </button>
+              <button onClick={exportPDF}
+                className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-white/15 backdrop-blur hover:bg-white/25 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition border border-white/20">
+                <FiDownload size={12} /> PDF
+              </button>
             </div>
           </div>
-          <div className="flex gap-2 shrink-0">
-            <button onClick={exportCSV}
-              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-white/15 backdrop-blur hover:bg-white/25 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition border border-white/20">
-              <FiDownload size={12} /> CSV
-            </button>
-            <button onClick={exportPDF}
-              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-white/15 backdrop-blur hover:bg-white/25 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition border border-white/20">
-              <FiDownload size={12} /> PDF
-            </button>
+
+          {/* Prominent city search */}
+          <div className="relative">
+            <div className="relative bg-white rounded-2xl shadow-2xl shadow-black/10">
+              <FiMapPin className="absolute left-4 rtl:right-4 rtl:left-auto top-1/2 -translate-y-1/2 text-emerald-600" size={17} />
+              <input
+                type="text" value={locationSearch} onChange={e => setLocationSearch(e.target.value)}
+                className="w-full pl-12 rtl:pr-12 pr-12 rtl:pl-12 py-3 sm:py-3.5 text-gray-900 rounded-2xl text-sm focus:ring-4 focus:ring-white/40 outline-none placeholder:text-gray-400"
+                placeholder={isUrdu ? 'شہر / منڈی تلاش کریں — مقامی نرخیں دیکھیں' : 'Search city or mandi — see local prices…'}
+              />
+              {locationSearch ? (
+                <button onClick={() => setLocationSearch('')} className="absolute right-3 rtl:left-3 rtl:right-auto top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-400 flex items-center justify-center transition">
+                  <FiX size={15} />
+                </button>
+              ) : selectedLocationName ? (
+                <button onClick={clearCity} className="absolute right-3 rtl:left-3 rtl:right-auto top-1/2 -translate-y-1/2 flex items-center gap-1 text-emerald-700 text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-full max-w-[160px] truncate transition">
+                  <FiMapPin size={11} className="shrink-0" />
+                  <span className="truncate">{selectedLocationName}</span>
+                  <FiX size={11} className="shrink-0 opacity-60" />
+                </button>
+              ) : null}
+            </div>
+
+            {/* Dropdown */}
+            {locationResults.length > 0 && (
+              <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl overflow-hidden card-floating z-50 max-h-72 overflow-y-auto animate-fade-in-up">
+                {locationResults.map(loc => (
+                  <button key={loc._id} onClick={() => selectLocation(loc)}
+                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-emerald-50 transition border-b border-gray-50 last:border-0 text-left rtl:text-right">
+                    <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 shrink-0">
+                      <FiMapPin size={15} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">{isUrdu && loc.cityUrdu ? loc.cityUrdu : loc.city}</p>
+                      <p className="text-[11px] text-gray-400 truncate">
+                        {loc.district && loc.district !== loc.city && (
+                          <>{isUrdu && loc.districtUrdu ? loc.districtUrdu : loc.district} · </>
+                        )}
+                        {isUrdu && loc.provinceUrdu ? loc.provinceUrdu : loc.province}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -168,50 +233,6 @@ export default function Prices() {
         ))}
       </div>
 
-      {/* Local location picker */}
-      {activeTab === 'local' && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 card-soft">
-          <label className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-700 mb-2">
-            <FiMapPin size={13} /> {isUrdu ? 'مقامی منڈی کا شہر' : 'Local Mandi City'}
-          </label>
-          <div className="relative">
-            <FiSearch className="absolute left-3.5 rtl:right-3.5 rtl:left-auto top-1/2 -translate-y-1/2 text-gray-400" size={15} />
-            <input type="text" value={locationSearch} onChange={e => setLocationSearch(e.target.value)}
-              className="w-full pl-10 rtl:pr-10 rtl:pl-4 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-green-400 focus:ring-2 focus:ring-green-100 outline-none bg-gray-50"
-              placeholder={isUrdu ? 'شہر تلاش کریں...' : 'Search city...'} />
-            {selectedLocationName && !locationSearch && (
-              <div className="absolute right-3 rtl:left-3 rtl:right-auto top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                <span className="text-[12px] bg-green-50 text-green-700 px-2 py-1 rounded-lg font-semibold">
-                  📍 {selectedLocationName}
-                </span>
-                <button onClick={() => { setSelectedLocation(null); setSelectedLocationName(''); }}
-                  className="text-gray-400 hover:text-red-500">
-                  <FiX size={14} />
-                </button>
-              </div>
-            )}
-          </div>
-          {locationResults.length > 0 && (
-            <div className="mt-2 border border-gray-100 rounded-xl overflow-hidden card-elevated max-h-60 overflow-y-auto">
-              {locationResults.map(loc => (
-                <button key={loc._id} onClick={() => selectLocation(loc)}
-                  className="flex items-center gap-3 w-full px-4 py-2.5 text-[13px] hover:bg-green-50 transition border-b border-gray-50 last:border-0 text-left rtl:text-right">
-                  <FiMapPin className="text-green-500 shrink-0" size={14} />
-                  <div>
-                    <span className="font-semibold text-gray-800">
-                      {isUrdu && loc.cityUrdu ? loc.cityUrdu : loc.city}
-                    </span>
-                    <span className="text-xs text-gray-400 ml-2 rtl:mr-2 rtl:ml-0">
-                      {isUrdu && loc.provinceUrdu ? loc.provinceUrdu : loc.province}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Search filters */}
       <div className="flex gap-2 sm:gap-3 flex-wrap">
         <div className="relative flex-1 min-w-full sm:min-w-[200px]">
@@ -229,7 +250,9 @@ export default function Prices() {
 
       {/* Table */}
       {loading ? (
-        <SkeletonTable rows={6} cols={5} />
+        <div className="bg-white rounded-2xl border border-gray-100 card-soft">
+          <Loader label={isUrdu ? 'قیمتیں لوڈ ہو رہی ہیں…' : 'Loading prices…'} />
+        </div>
       ) : activeTab === 'local' && !selectedLocation ? (
         <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-16 text-center">
           <div className="text-6xl mb-3">📍</div>
@@ -305,6 +328,17 @@ export default function Prices() {
             </table>
           </div>
 
+          {filtered[0]?.recordedAt && (
+            <div className="hidden md:flex items-center justify-between gap-3 px-5 py-3 bg-gray-50/70 border-t border-gray-100 text-[11px] text-gray-500">
+              <span>
+                {isUrdu ? 'آخری اپ ڈیٹ:' : 'Last updated:'} {new Date(filtered[0].recordedAt).toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' })}
+              </span>
+              <span className="font-medium">
+                {isUrdu ? 'ذریعہ:' : 'Source:'} {filtered[0].source || (activeTab === 'international' ? 'CBOT/ICE' : activeTab === 'national' ? 'PBS / PMEX' : 'AMIS Punjab')}
+              </span>
+            </div>
+          )}
+
           {/* Mobile cards */}
           <div className="md:hidden divide-y divide-gray-100">
             {filtered.map((p, i) => {
@@ -339,6 +373,12 @@ export default function Prices() {
                 </div>
               );
             })}
+            {filtered[0]?.recordedAt && (
+              <div className="px-4 py-3 bg-gray-50/70 text-[10.5px] text-gray-500 flex flex-col gap-0.5">
+                <span>{isUrdu ? 'آخری اپ ڈیٹ:' : 'Last updated:'} {new Date(filtered[0].recordedAt).toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                <span>{isUrdu ? 'ذریعہ:' : 'Source:'} {filtered[0].source || (activeTab === 'international' ? 'CBOT/ICE' : activeTab === 'national' ? 'PBS / PMEX' : 'AMIS Punjab')}</span>
+              </div>
+            )}
           </div>
         </div>
       )}

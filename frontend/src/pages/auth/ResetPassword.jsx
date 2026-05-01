@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { FiLock, FiCheckCircle } from 'react-icons/fi';
+import { FiLock, FiCheckCircle, FiEye, FiEyeOff } from 'react-icons/fi';
 import axios from 'axios';
+import useForceLight from '../../hooks/useForceLight';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export default function ResetPassword() {
+  useForceLight();
   const { t, i18n } = useTranslation();
   const isUrdu = i18n.language === 'ur';
   const { token } = useParams();
@@ -16,6 +18,8 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -81,11 +85,16 @@ export default function ResetPassword() {
                   <div className="relative">
                     <FiLock className="absolute left-3 rtl:right-3 rtl:left-auto top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
-                      type="password" required value={password} onChange={e => setPassword(e.target.value)}
+                      type={showPwd ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)}
                       minLength={8}
-                      className="w-full pl-10 rtl:pr-10 rtl:pl-4 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                      className="w-full pl-10 rtl:pr-10 pr-10 rtl:pl-10 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
                       placeholder="••••••••"
                     />
+                    <button type="button" onClick={() => setShowPwd(s => !s)} tabIndex={-1}
+                      aria-label={showPwd ? 'Hide password' : 'Show password'}
+                      className="absolute right-3 rtl:left-3 rtl:right-auto top-1/2 -translate-y-1/2 text-gray-400 hover:text-green-600 transition">
+                      {showPwd ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                    </button>
                   </div>
                 </div>
                 <div>
@@ -93,11 +102,16 @@ export default function ResetPassword() {
                   <div className="relative">
                     <FiLock className="absolute left-3 rtl:right-3 rtl:left-auto top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
-                      type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                      type={showConfirm ? 'text' : 'password'} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                       minLength={8}
-                      className="w-full pl-10 rtl:pr-10 rtl:pl-4 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                      className="w-full pl-10 rtl:pr-10 pr-10 rtl:pl-10 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
                       placeholder="••••••••"
                     />
+                    <button type="button" onClick={() => setShowConfirm(s => !s)} tabIndex={-1}
+                      aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                      className="absolute right-3 rtl:left-3 rtl:right-auto top-1/2 -translate-y-1/2 text-gray-400 hover:text-green-600 transition">
+                      {showConfirm ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                    </button>
                   </div>
                 </div>
                 <button type="submit" disabled={loading}

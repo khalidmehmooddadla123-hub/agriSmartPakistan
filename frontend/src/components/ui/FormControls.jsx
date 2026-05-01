@@ -1,8 +1,15 @@
 /**
  * Reusable form controls with consistent styling + Urdu RTL support
  */
+import { useState } from 'react';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 
 export function Input({ label, icon: Icon, ...props }) {
+  const isPassword = props.type === 'password';
+  const [show, setShow] = useState(false);
+  const inputType = isPassword ? (show ? 'text' : 'password') : props.type;
+  const padRight = isPassword ? 'pr-10 rtl:pl-10 rtl:pr-4' : 'pr-4';
+
   return (
     <div>
       {label && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>}
@@ -10,8 +17,20 @@ export function Input({ label, icon: Icon, ...props }) {
         {Icon && <Icon className="absolute left-3 rtl:right-3 rtl:left-auto top-1/2 -translate-y-1/2 text-gray-400" size={16} />}
         <input
           {...props}
-          className={`w-full ${Icon ? 'pl-10 rtl:pr-10 rtl:pl-4' : 'pl-4'} pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none bg-white disabled:bg-gray-50 ${props.className || ''}`}
+          type={inputType}
+          className={`w-full ${Icon ? 'pl-10 rtl:pr-10 rtl:pl-4' : 'pl-4'} ${padRight} py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none bg-white disabled:bg-gray-50 ${props.className || ''}`}
         />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShow(s => !s)}
+            tabIndex={-1}
+            aria-label={show ? 'Hide password' : 'Show password'}
+            className="absolute right-3 rtl:left-3 rtl:right-auto top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+          >
+            {show ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+          </button>
+        )}
       </div>
     </div>
   );

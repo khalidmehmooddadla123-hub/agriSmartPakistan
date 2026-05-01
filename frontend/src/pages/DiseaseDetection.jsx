@@ -65,18 +65,27 @@ export default function DiseaseDetection() {
       return;
     }
     setScanning(true);
+    setResult(null);
     try {
       const formData = new FormData();
       if (image) formData.append('image', image);
       if (description) formData.append('description', description);
       if (selectedCrop) formData.append('crop', selectedCrop);
       const res = await api.post('/disease/detect', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        // Suppress the global axios error toast — we render off-topic inline.
+        _silentToast: true
       });
       setResult(res.data.data);
       toast.success(isUrdu ? 'تشخیص مکمل!' : 'Diagnosis ready!');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Detection failed');
+      const data = err.response?.data;
+      if (data?.offTopic) {
+        // Render off-topic as a structured result card, not a toast
+        setResult({ offTopic: true, message: isUrdu ? data.messageUrdu : data.message, subject: data.subject });
+      } else {
+        toast.error(data?.message || 'Detection failed');
+      }
     } finally { setScanning(false); }
   };
 
@@ -121,7 +130,12 @@ export default function DiseaseDetection() {
       const res = await api.post('/disease/chat', {
         message: userMsg, language: i18n.language, history: chatMessages.slice(-10)
       });
-      setChatMessages(prev => [...prev, { role: 'bot', text: res.data.data.reply }]);
+      const data = res.data.data || {};
+      setChatMessages(prev => [...prev, {
+        role: 'bot',
+        text: data.reply,
+        offTopic: !!data.offTopic
+      }]);
     } catch {
       setChatMessages(prev => [...prev, {
         role: 'bot',
@@ -220,7 +234,7 @@ export default function DiseaseDetection() {
                 {isUrdu ? 'فصل منتخب کریں' : 'Select Crop'} <span className="text-gray-400 font-normal text-xs">({isUrdu ? 'اختیاری' : 'optional'})</span>
               </h3>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
               {crops.map(c => (
                 <button key={c.en} onClick={() => setSelectedCrop(selectedCrop === c.en ? '' : c.en)}
                   className={`py-2.5 rounded-xl border-2 transition-all flex flex-col items-center gap-0.5 ${
@@ -276,7 +290,35 @@ export default function DiseaseDetection() {
 
         {/* RIGHT: Results Panel */}
         <div className="lg:col-span-3">
-          {result ? (
+          {result?.offTopic ? (
+            <div className="bg-white rounded-2xl border-2 border-amber-200 overflow-hidden card-soft animate-fade-in-up">
+              <div className="bg-gradient-to-br from-amber-50 to-orange-50 px-5 sm:px-7 py-6 sm:py-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-amber-100 flex items-center justify-center text-3xl">🌾❌</div>
+                <h3 className="text-lg sm:text-xl font-bold text-amber-900 mb-2">
+                  {isUrdu ? 'یہ زراعت سے متعلق نہیں' : 'Not an agriculture-related image'}
+                </h3>
+                <p className="text-sm text-amber-800 leading-relaxed max-w-md mx-auto">
+                  {result.message}
+                </p>
+                {result.subject && (
+                  <p className="text-[11px] text-amber-700/80 mt-3">
+                    {isUrdu ? 'تصویر میں دیکھا گیا:' : 'Detected in image:'} <span className="font-semibold">{result.subject}</span>
+                  </p>
+                )}
+              </div>
+              <div className="p-5 bg-white border-t border-amber-100 text-center">
+                <p className="text-xs text-gray-500 mb-3">
+                  {isUrdu
+                    ? 'مثالیں: پتے کی تصویر، فصل کے کھیت، پھل، مٹی، یا کیڑے'
+                    : 'Examples that work: a leaf photo, crop field, fruit, soil, or pest insect'}
+                </p>
+                <button onClick={resetScan}
+                  className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition">
+                  <FiRefreshCw size={14} /> {isUrdu ? 'دوبارہ کوشش کریں' : 'Try Another Image'}
+                </button>
+              </div>
+            </div>
+          ) : result ? (
             <div className="space-y-4">
               {/* Main result card */}
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden card-soft">
@@ -439,10 +481,17 @@ export default function DiseaseDetection() {
                   <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${
                     msg.role === 'user'
                       ? 'bg-green-600 text-white rounded-br-sm'
-                      : 'bg-white border border-gray-100 text-gray-700 rounded-bl-sm card-soft'
+                      : msg.offTopic
+                        ? 'bg-amber-50 border border-amber-200 text-amber-900 rounded-bl-sm'
+                        : 'bg-white border border-gray-100 text-gray-700 rounded-bl-sm card-soft'
                   }`}>
+                    {msg.offTopic && (
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 mb-1">
+                        🌾❌ {isUrdu ? 'غیر زرعی سوال' : 'Off-topic'}
+                      </div>
+                    )}
                     <div className="whitespace-pre-line leading-relaxed">{msg.text}</div>
-                    {msg.role === 'bot' && (
+                    {msg.role === 'bot' && !msg.offTopic && (
                       <button onClick={() => speakResult(msg.text, i18n.language)}
                         className="mt-1.5 text-[10px] text-green-600 hover:text-green-800 flex items-center gap-1">
                         <FiVolume2 size={11} /> {isUrdu ? 'سنیں' : 'Listen'}

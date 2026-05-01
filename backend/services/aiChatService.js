@@ -313,6 +313,150 @@ Return ONLY valid JSON with this shape:
 exports.isAIAvailable = () => !!getClient();
 
 /**
+ * STRICT plant-image gate for disease scanner.
+ * Disease scanner can ONLY analyse plant material — leaves, stems, fruits,
+ * vegetables, or close-ups of crops. Anything else (animals, buildings,
+ * humans, food on plates, soil alone, equipment) MUST be rejected — otherwise
+ * the downstream Hugging Face plant-disease model will hallucinate a fake
+ * diagnosis on the closest-matching label.
+ *
+ * Fails CLOSED on AI error: if Gemini is unreachable, we reject the upload
+ * with a "couldn't verify" message. This is the right tradeoff because a
+ * false positive disease (cat → Tomato Leaf Mold) is far worse than asking a
+ * legitimate user to retry.
+ *
+ * Returns:
+ *   { isPlant: true,  subject: 'tomato leaf', confidence: 92 }
+ *   { isPlant: false, subject: 'cat',         confidence: 95, why: 'animal, no plant visible' }
+ */
+exports.plantImageGate = async (imageBuffer, mimeType = 'image/jpeg') => {
+  const client = getClient();
+  if (!client) {
+    // Without AI, refuse to proceed — disease scanner cannot run safely.
+    return { isPlant: false, subject: 'unverified', confidence: 0, why: 'AI verification unavailable', source: 'no-gate' };
+  }
+
+  const prompt = `You are a STRICT image classifier for a plant-disease scanner.
+
+The user must upload a clear photo containing PLANT MATERIAL — specifically one of:
+- A leaf (close-up showing texture, veins, lesions, spots, or color)
+- A whole plant or sapling
+- A fruit or vegetable (especially showing damage or disease)
+- A crop field with visible plants
+
+If the image shows ANYTHING ELSE — even agriculture-adjacent things — you MUST classify it as NOT a plant. Reject:
+- People, faces, hands (alone, without plants)
+- Animals: cats, dogs, cows, goats, buffaloes, chickens, birds, insects, fish
+- Food on plates, cooked food, prepared dishes
+- Buildings, vehicles, tractors, machinery, tools
+- Electronics, screenshots, memes, drawings, icons, emojis
+- Bare soil with no plant visible
+- Empty pots, gardening tools alone
+- Pure landscapes / scenery without crops
+- Documents, paper, text
+
+Return ONLY this JSON (response_mime_type is application/json):
+{
+  "isPlant": <true ONLY if image clearly contains a leaf/plant/fruit/vegetable/crop, false otherwise>,
+  "subject": "<1-3 words: the actual subject of the image>",
+  "confidence": <0-100, your certainty in this classification>,
+  "why": "<one short sentence explaining your decision>"
+}
+
+Be EXTREMELY STRICT. When in doubt → false. Better to reject a borderline image than to mis-diagnose. A cat is NOT a plant. A cow is NOT a plant. A person holding a leaf where the leaf isn't clearly visible is NOT enough — only true if you can clearly see plant material as the subject.`;
+
+  let lastErr;
+  for (const modelName of MODEL_CHAIN) {
+    try {
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: { temperature: 0, maxOutputTokens: 200, responseMimeType: 'application/json' }
+      });
+      const result = await model.generateContent([
+        { inlineData: { data: imageBuffer.toString('base64'), mimeType } },
+        prompt
+      ]);
+      const data = extractJSON(result.response.text().trim());
+      if (data && typeof data.isPlant === 'boolean') {
+        // Extra safety: even if Gemini says true, require confidence ≥ 60
+        const confident = (data.confidence ?? 100) >= 60;
+        return {
+          isPlant: data.isPlant && confident,
+          subject: data.subject || 'unknown',
+          confidence: data.confidence ?? 0,
+          why: data.why || (confident ? '' : 'Low confidence'),
+          source: 'gemini-strict'
+        };
+      }
+    } catch (err) {
+      lastErr = err;
+      if (!/(503|429|overload)/.test(err.message || '')) break;
+    }
+  }
+  console.warn('[PLANT-GATE] Failed, rejecting closed:', lastErr?.message);
+  return {
+    isPlant: false,
+    subject: 'unverified',
+    confidence: 0,
+    why: 'Could not verify the image. Please try again with a clear photo of a plant or leaf.',
+    source: 'gate-error'
+  };
+};
+
+/**
+ * Broader gate for the crop identifier. Accepts plants + crop fields (the
+ * crop ID tool can handle wider context than the disease scanner).
+ * Same fail-closed behaviour — if Gemini errors, we reject.
+ */
+exports.agriImageGate = async (imageBuffer, mimeType = 'image/jpeg') => {
+  // Just delegate to plantImageGate for now — same strict rules apply since
+  // crop ID also needs to see a plant to identify it.
+  const result = await exports.plantImageGate(imageBuffer, mimeType);
+  return {
+    isAgri: result.isPlant,
+    kind: result.isPlant ? 'plant' : 'not_agri',
+    subject: result.subject,
+    reason: result.why,
+    source: result.source
+  };
+};
+
+/**
+ * Cheap text-only check: is the user's question/message actually about farming?
+ * Returns { isAgri, reason }. Fails open on AI errors.
+ */
+exports.agriTextGate = async (message) => {
+  const client = getClient();
+  if (!client || !message || message.length < 3) return { isAgri: true, source: 'no-gate' };
+
+  const prompt = `Decide if the following user message is related to farming, agriculture, crops, livestock, weather/soil for farming, pesticides/fertilizers, or rural Pakistani agri-life.
+
+Message: """${message.slice(0, 800)}"""
+
+Return ONLY JSON:
+{ "isAgri": true | false, "topic": "1-3 words" }
+
+Examples NOT agri: "tell me a joke", "how to code in python", "who won the cricket match", "draw me a logo", "translate this to french".
+Examples YES agri: "wheat rust treatment", "best fertilizer for cotton", "when to plant rice in punjab", "milk yield per buffalo", "kissan card eligibility".`;
+
+  try {
+    const text = await callGeminiWithFallback(async (modelName) => {
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: { temperature: 0, maxOutputTokens: 80, responseMimeType: 'application/json' }
+      });
+      const result = await model.generateContent(prompt);
+      return result.response.text().trim();
+    });
+    const data = extractJSON(text);
+    if (data && typeof data.isAgri === 'boolean') return { ...data, source: 'gemini-gate' };
+  } catch (err) {
+    console.warn('[AI-GATE] Text gate failed, allowing through:', err.message);
+  }
+  return { isAgri: true, source: 'gate-error' };
+};
+
+/**
  * Identify crop from an image (uses Gemini Vision)
  */
 exports.identifyCrop = async (imageBuffer, mimeType = 'image/jpeg', language = 'en') => {

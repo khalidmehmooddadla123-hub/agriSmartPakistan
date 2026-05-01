@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FiDroplet, FiZap, FiTrendingUp, FiRefreshCw, FiHeart, FiDollarSign, FiShoppingCart, FiMessageSquare, FiBook, FiArrowRight, FiCreditCard, FiSearch } from 'react-icons/fi';
+import { FiDroplet, FiZap, FiTrendingUp, FiRefreshCw, FiHeart, FiDollarSign, FiShoppingCart, FiMessageSquare, FiBook, FiArrowRight, FiCreditCard, FiSearch, FiGrid } from 'react-icons/fi';
 
 const tools = [
   {
@@ -72,6 +72,16 @@ const tools = [
     descEn: 'Upload a photo — AI tells you what crop it is',
     descUr: 'تصویر اپ لوڈ کریں — AI فصل پہچانے گا',
     tag: 'AI Vision', tagUr: 'AI ویژن'
+  },
+  {
+    path: '/tools/units',
+    icon: FiGrid, color: 'from-emerald-500 to-teal-600',
+    bg: 'bg-emerald-50', text: 'text-emerald-600',
+    key: 'units',
+    titleEn: 'Unit Converter', titleUr: 'پیمائش کنورٹر',
+    descEn: 'Marla, Kanal, Acre, Murabba, Maund, Seer & more',
+    descUr: 'مرلہ، کنال، ایکڑ، مربع، من، سیر — سب ایک جگہ',
+    tag: 'Essential', tagUr: 'ضروری'
   },
   {
     path: '/expenses',

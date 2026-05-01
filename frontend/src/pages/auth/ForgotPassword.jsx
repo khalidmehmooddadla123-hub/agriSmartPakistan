@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { authAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 import { FiMail, FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
+import useForceLight from '../../hooks/useForceLight';
 
 export default function ForgotPassword() {
+  useForceLight();
   const { t, i18n } = useTranslation();
   const isUrdu = i18n.language === 'ur';
   const [email, setEmail] = useState('');

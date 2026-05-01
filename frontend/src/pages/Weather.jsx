@@ -2,7 +2,75 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { weatherAPI, locationAPI } from '../services/api';
-import { FiDroplet, FiWind, FiEye, FiAlertTriangle, FiSun, FiCloud, FiSearch, FiMapPin, FiCheck, FiClock } from 'react-icons/fi';
+import { FiDroplet, FiWind, FiEye, FiAlertTriangle, FiSun, FiCloud, FiSearch, FiMapPin, FiCheck, FiClock, FiX, FiCrosshair } from 'react-icons/fi';
+import Loader from '../components/ui/Loader';
+
+/**
+ * Dynamic theme that picks a gradient + emoji ambience based on
+ * the current weather description + local hour of day.
+ */
+function getWeatherTheme(weather) {
+  const desc = (weather?.description || '').toLowerCase();
+  const hour = new Date().getHours();
+  const isNight = hour < 6 || hour >= 19;
+  const hasRain = desc.includes('rain') || desc.includes('drizzle') || desc.includes('shower') || desc.includes('thunder');
+  const isSnow = desc.includes('snow') || desc.includes('sleet');
+  const isCloudy = desc.includes('cloud') || desc.includes('overcast');
+  const isClear = desc.includes('clear') || desc.includes('sunny');
+  const isFog = desc.includes('fog') || desc.includes('mist') || desc.includes('haze');
+
+  if (hasRain) return {
+    gradient: 'from-slate-700 via-blue-700 to-blue-900',
+    accent: 'text-blue-100', icon: '🌧',
+    bgEmoji: '💧', subtitle: 'Rainy weather'
+  };
+  if (isSnow) return {
+    gradient: 'from-cyan-200 via-sky-300 to-blue-400',
+    accent: 'text-cyan-50', icon: '❄️',
+    bgEmoji: '❄️', subtitle: 'Snow / sleet'
+  };
+  if (isFog) return {
+    gradient: 'from-slate-400 via-slate-500 to-slate-600',
+    accent: 'text-slate-100', icon: '🌫',
+    bgEmoji: '🌫', subtitle: 'Foggy / hazy'
+  };
+  if (isCloudy) return {
+    gradient: isNight
+      ? 'from-slate-700 via-slate-800 to-slate-900'
+      : 'from-slate-400 via-blue-400 to-slate-500',
+    accent: isNight ? 'text-slate-100' : 'text-blue-50',
+    icon: isNight ? '☁️' : '⛅',
+    bgEmoji: '☁️', subtitle: isNight ? 'Cloudy night' : 'Cloudy day'
+  };
+  if (isClear || !desc) {
+    if (isNight) return {
+      gradient: 'from-indigo-900 via-purple-900 to-slate-900',
+      accent: 'text-indigo-100', icon: '🌙',
+      bgEmoji: '✨', subtitle: 'Clear night'
+    };
+    if (hour < 9) return {
+      gradient: 'from-rose-300 via-amber-300 to-yellow-400',
+      accent: 'text-amber-50', icon: '🌅',
+      bgEmoji: '🌅', subtitle: 'Sunrise'
+    };
+    if (hour > 17) return {
+      gradient: 'from-orange-400 via-rose-500 to-purple-600',
+      accent: 'text-rose-50', icon: '🌇',
+      bgEmoji: '🌇', subtitle: 'Sunset'
+    };
+    return {
+      gradient: 'from-amber-400 via-orange-400 to-yellow-500',
+      accent: 'text-amber-50', icon: '☀️',
+      bgEmoji: '☀️', subtitle: 'Sunny day'
+    };
+  }
+  // Fallback
+  return {
+    gradient: 'from-blue-500 via-sky-500 to-cyan-500',
+    accent: 'text-blue-100', icon: '🌤',
+    bgEmoji: '🌤', subtitle: 'Partly cloudy'
+  };
+}
 
 // Generate farming tips based on weather conditions
 function getFarmingTips(weather, lang) {
@@ -160,9 +228,11 @@ export default function Weather() {
     const results = locations.filter(loc =>
       loc.city?.toLowerCase().includes(q) ||
       loc.cityUrdu?.includes(searchQuery) ||
+      loc.district?.toLowerCase().includes(q) ||
+      loc.districtUrdu?.includes(searchQuery) ||
       loc.province?.toLowerCase().includes(q) ||
       loc.provinceUrdu?.includes(searchQuery)
-    ).slice(0, 8);
+    ).slice(0, 15);
     setSearchResults(results);
   }, [searchQuery, locations]);
 
@@ -174,54 +244,82 @@ export default function Weather() {
   };
 
   const tips = getFarmingTips(weather, lang);
+  const theme = getWeatherTheme(weather);
 
   if (loading) {
-    return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div></div>;
+    return <Loader label={isUrdu ? 'موسم لوڈ ہو رہا ہے…' : 'Loading weather…'} />;
   }
 
   return (
     <div className="space-y-5 animate-fade-in-up">
-      {/* Hero with integrated search */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-500 via-sky-500 to-cyan-500 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-7 text-white card-elevated">
-        <div className="absolute top-0 right-0 rtl:left-0 rtl:right-auto w-44 sm:w-60 h-44 sm:h-60 bg-white/10 rounded-full -mr-16 sm:-mr-20 -mt-16 sm:-mt-20 blur-2xl" />
+      {/* Hero with dynamic weather/time theme — outer wrapper has NO overflow-hidden so the search dropdown can extend below */}
+      <div className="relative">
+      <div className={`relative bg-gradient-to-br ${theme.gradient} rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-7 text-white card-elevated transition-all duration-700`}>
+        {/* Decorative orbs + floating emoji clipped to the rounded corners */}
+        <div className="absolute inset-0 overflow-hidden rounded-2xl sm:rounded-3xl pointer-events-none">
+          <div className="absolute -top-6 right-6 text-7xl sm:text-9xl opacity-20 animate-float select-none">{theme.bgEmoji}</div>
+          <div className="absolute top-0 right-0 rtl:left-0 rtl:right-auto w-44 sm:w-60 h-44 sm:h-60 bg-white/15 rounded-full -mr-16 sm:-mr-20 -mt-16 sm:-mt-20 blur-2xl" />
+          <div className="absolute -bottom-12 -left-12 rtl:-right-12 rtl:left-auto w-48 h-48 bg-white/10 rounded-full blur-3xl" />
+        </div>
+
         <div className="relative">
-          <div className="flex items-start gap-3 mb-3 sm:mb-4">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 bg-white/20 backdrop-blur rounded-xl sm:rounded-2xl flex items-center justify-center text-xl sm:text-2xl shrink-0">🌤</div>
+          <div className="flex items-start gap-3 mb-4 sm:mb-5">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/25 backdrop-blur rounded-xl sm:rounded-2xl flex items-center justify-center text-2xl sm:text-3xl shrink-0 shadow-lg">
+              {theme.icon}
+            </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl md:text-2xl font-bold truncate">{t('weather.title')}</h1>
-              <p className="text-blue-100 text-[11px] sm:text-xs mt-0.5 line-clamp-1">
-                {isUrdu ? 'لائیو موسم + کاشتکاری مشورے' : 'Live weather + farming tips'}
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">{t('weather.title')}</h1>
+              <p className={`${theme.accent} text-[11px] sm:text-xs mt-0.5 line-clamp-1 font-medium`}>
+                {isUrdu ? 'لائیو موسم + کاشتکاری مشورے' : `${theme.subtitle} · live weather + farming tips`}
               </p>
             </div>
           </div>
 
+          {/* Beautiful search bar */}
           <div className="relative">
-            <FiSearch className="absolute left-3.5 rtl:right-3.5 rtl:left-auto top-1/2 -translate-y-1/2 text-blue-500" size={16} />
-            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-10 rtl:pr-10 rtl:pl-4 pr-4 py-3 bg-white text-gray-800 rounded-2xl text-sm focus:ring-4 focus:ring-white/30 outline-none placeholder:text-gray-400"
-              placeholder={t('weather.searchPlace')} />
-            {selectedLocationName && !searchQuery && (
-              <div className="absolute right-3 rtl:left-3 rtl:right-auto top-1/2 -translate-y-1/2 flex items-center gap-1 text-blue-600 text-xs font-semibold bg-blue-50 px-2 py-0.5 rounded-full">
-                <FiMapPin size={11} /> {selectedLocationName}
+            <div className="relative bg-white rounded-2xl shadow-2xl shadow-black/10">
+              <FiSearch className="absolute left-4 rtl:right-4 rtl:left-auto top-1/2 -translate-y-1/2 text-emerald-600" size={17} />
+              <input
+                type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-12 rtl:pr-12 pr-12 rtl:pl-12 py-3 sm:py-3.5 text-gray-900 rounded-2xl text-sm focus:ring-4 focus:ring-white/40 outline-none placeholder:text-gray-400"
+                placeholder={t('weather.searchPlace')}
+              />
+              {searchQuery ? (
+                <button onClick={() => setSearchQuery('')} className="absolute right-3 rtl:left-3 rtl:right-auto top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-400 flex items-center justify-center transition">
+                  <FiX size={15} />
+                </button>
+              ) : selectedLocationName ? (
+                <div className="absolute right-3 rtl:left-3 rtl:right-auto top-1/2 -translate-y-1/2 flex items-center gap-1 text-emerald-700 text-[11px] font-bold bg-emerald-50 px-2.5 py-1 rounded-full max-w-[120px] truncate">
+                  <FiMapPin size={11} className="shrink-0" /> {selectedLocationName}
+                </div>
+              ) : null}
+            </div>
+
+            {searchResults.length > 0 && (
+              <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl overflow-hidden card-floating z-50 max-h-72 overflow-y-auto animate-fade-in-up">
+                {searchResults.map(loc => (
+                  <button key={loc._id} onClick={() => selectLocation(loc)}
+                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-emerald-50 transition border-b border-gray-50 last:border-0 text-left rtl:text-right">
+                    <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 shrink-0">
+                      <FiMapPin size={15} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">{isUrdu && loc.cityUrdu ? loc.cityUrdu : loc.city}</p>
+                      <p className="text-[11px] text-gray-400 truncate">
+                        {loc.district && loc.district !== loc.city && (
+                          <>{isUrdu && loc.districtUrdu ? loc.districtUrdu : loc.district} · </>
+                        )}
+                        {isUrdu && loc.provinceUrdu ? loc.provinceUrdu : loc.province}
+                      </p>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
           </div>
-          {searchResults.length > 0 && (
-            <div className="absolute left-6 right-6 rtl:right-6 rtl:left-6 mt-2 bg-white rounded-2xl overflow-hidden card-floating z-20 max-h-72 overflow-y-auto">
-              {searchResults.map(loc => (
-                <button key={loc._id} onClick={() => selectLocation(loc)}
-                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-blue-50 transition border-b border-gray-50 last:border-0 text-left rtl:text-right">
-                  <FiMapPin className="text-blue-500 shrink-0" size={15} />
-                  <div>
-                    <p className="font-semibold text-gray-800">{isUrdu && loc.cityUrdu ? loc.cityUrdu : loc.city}</p>
-                    <p className="text-[11px] text-gray-400">{isUrdu && loc.provinceUrdu ? loc.provinceUrdu : loc.province}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
-      </div>
+      </div>{/* close inner gradient card */}
+      </div>{/* close outer wrapper */}
 
       {!weather ? (
         <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 py-16 text-center">
@@ -231,27 +329,30 @@ export default function Weather() {
         </div>
       ) : (
         <>
-          {/* Current weather big card */}
+          {/* Current weather big card with dynamic theme */}
           <div className="bg-white rounded-2xl border border-gray-100 card-soft overflow-hidden">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 sm:p-5 md:p-6 text-white relative">
-              <div className="absolute top-0 right-0 rtl:left-0 rtl:right-auto w-32 sm:w-40 h-32 sm:h-40 bg-white/10 rounded-full -mr-10 sm:-mr-12 -mt-10 sm:-mt-12 blur-2xl" />
-              <div className="relative flex items-center justify-between flex-wrap gap-3 sm:gap-4">
+            <div className={`relative bg-gradient-to-br ${theme.gradient} p-5 sm:p-6 md:p-7 text-white overflow-hidden transition-all duration-700`}>
+              <div className="absolute top-0 right-0 rtl:left-0 rtl:right-auto w-40 sm:w-52 h-40 sm:h-52 bg-white/15 rounded-full -mr-12 sm:-mr-16 -mt-12 sm:-mt-16 blur-2xl" />
+              <div className="absolute -bottom-10 -left-10 rtl:-right-10 rtl:left-auto w-40 h-40 bg-white/10 rounded-full blur-3xl" />
+              {/* Floating ambient icon */}
+              <div className="absolute -bottom-4 right-4 text-8xl sm:text-9xl opacity-20 animate-float select-none pointer-events-none">
+                {theme.icon}
+              </div>
+
+              <div className="relative flex items-end justify-between flex-wrap gap-3 sm:gap-4">
                 <div className="min-w-0 flex-1">
-                  <p className="text-blue-100 text-[11px] sm:text-xs flex items-center gap-1 mb-1 sm:mb-2 truncate">
+                  <p className={`${theme.accent} text-[11px] sm:text-xs flex items-center gap-1 mb-2 truncate font-medium`}>
                     <FiMapPin size={11} className="shrink-0" /> {selectedLocationName}
                   </p>
                   <div className="flex items-end gap-2 sm:gap-3">
-                    <span className="text-5xl sm:text-6xl md:text-7xl font-bold leading-none">{weather.temperature}°</span>
+                    <span className="text-6xl sm:text-7xl md:text-8xl font-extrabold leading-none tracking-tight" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.15)' }}>
+                      {weather.temperature}°
+                    </span>
                     <div className="pb-1 sm:pb-2 min-w-0">
-                      <p className="text-sm sm:text-base md:text-lg capitalize font-medium truncate">{weather.description}</p>
-                      <p className="text-blue-100 text-[11px] sm:text-xs">{t('weather.feelsLike')} {weather.feelsLike}°C</p>
+                      <p className="text-sm sm:text-base md:text-lg capitalize font-semibold truncate">{weather.description}</p>
+                      <p className={`${theme.accent} text-[11px] sm:text-xs`}>{t('weather.feelsLike')} {weather.feelsLike}°C</p>
                     </div>
                   </div>
-                </div>
-                <div className="text-4xl sm:text-6xl opacity-20 shrink-0">
-                  {(weather.description || '').toLowerCase().includes('rain') ? '🌧' :
-                   (weather.description || '').toLowerCase().includes('cloud') ? '☁️' :
-                   (weather.description || '').toLowerCase().includes('clear') ? '☀️' : '🌤'}
                 </div>
               </div>
             </div>
@@ -325,20 +426,30 @@ export default function Weather() {
                 const d = new Date(day.date);
                 const dn = (dayNames[lang] || dayNames.en)[d.getDay()];
                 const isRainy = day.precipitation > 60;
+                const isHot = day.tempMax >= 38;
+                const isCool = day.tempMax <= 18;
+                let dayIcon = '☀️';
+                let dayBg = 'bg-amber-50 hover:bg-amber-100';
+                if (isRainy) { dayIcon = '🌧'; dayBg = 'bg-blue-50 hover:bg-blue-100'; }
+                else if (isHot) { dayIcon = '🔥'; dayBg = 'bg-orange-50 hover:bg-orange-100'; }
+                else if (isCool) { dayIcon = '❄️'; dayBg = 'bg-cyan-50 hover:bg-cyan-100'; }
+                else if (day.precipitation > 30) { dayIcon = '⛅'; dayBg = 'bg-slate-50 hover:bg-slate-100'; }
                 return (
-                  <div key={i} className={`rounded-xl p-3 text-center transition-all hover:scale-[1.02] cursor-default ${
-                    i === 0 ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white' : 'bg-gray-50 hover:bg-blue-50'
+                  <div key={i} className={`rounded-xl p-3 text-center transition-all hover:scale-[1.04] hover:shadow-md cursor-default ${
+                    i === 0
+                      ? `bg-gradient-to-br ${theme.gradient} text-white shadow-md`
+                      : dayBg
                   }`}>
-                    <p className={`text-[11px] font-bold ${i === 0 ? 'text-white' : 'text-gray-600'}`}>{dn}</p>
-                    <p className={`text-[9.5px] ${i === 0 ? 'text-blue-100' : 'text-gray-400'}`}>
+                    <p className={`text-[11px] font-bold ${i === 0 ? 'text-white' : 'text-gray-700'}`}>{dn}</p>
+                    <p className={`text-[9.5px] ${i === 0 ? theme.accent : 'text-gray-400'}`}>
                       {d.toLocaleDateString('en-PK', { month: 'short', day: 'numeric' })}
                     </p>
                     <div className="my-2 text-2xl">
-                      {isRainy ? '🌧' : '☀️'}
+                      {i === 0 ? theme.icon : dayIcon}
                     </div>
                     <p className={`text-sm font-bold ${i === 0 ? 'text-white' : 'text-gray-900'}`}>{day.tempMax}°</p>
-                    <p className={`text-[11px] ${i === 0 ? 'text-blue-100' : 'text-gray-400'}`}>{day.tempMin}°</p>
-                    <div className={`mt-1 text-[10px] flex items-center justify-center gap-0.5 ${i === 0 ? 'text-blue-100' : 'text-blue-500'}`}>
+                    <p className={`text-[11px] ${i === 0 ? theme.accent : 'text-gray-400'}`}>{day.tempMin}°</p>
+                    <div className={`mt-1 text-[10px] flex items-center justify-center gap-0.5 ${i === 0 ? theme.accent : 'text-blue-500'}`}>
                       <FiDroplet size={9} /> {day.precipitation}%
                     </div>
                   </div>

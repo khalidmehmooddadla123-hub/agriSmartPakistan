@@ -1,44 +1,48 @@
 const User = require('../models/User');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { sendOTPEmail, sendPasswordResetEmail } = require('../services/emailService');
-const { sendOTPSMS } = require('../services/smsService');
+const { sendPasswordResetEmail, sendWelcomeEmail } = require('../services/emailService');
 
-// Generate 6-digit OTP
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+// Field-specific validators
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// @desc    Register new user
+// @desc    Register new user (email + password only)
 // @route   POST /api/auth/register
 exports.register = async (req, res, next) => {
   try {
-    const { fullName, email, phone, password, language, locationID } = req.body;
+    const { fullName, email, password, language, locationID } = req.body;
 
-    if (!email && !phone) {
-      return res.status(400).json({ success: false, message: 'Email or phone number is required' });
+    if (!fullName || fullName.trim().length < 2) {
+      return res.status(400).json({ success: false, field: 'fullName', message: 'Full name is required (min 2 characters)' });
+    }
+    if (!email) {
+      return res.status(400).json({ success: false, field: 'email', message: 'Email is required' });
+    }
+    if (!EMAIL_RE.test(email)) {
+      return res.status(400).json({ success: false, field: 'email', message: 'Please enter a valid email address' });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ success: false, field: 'password', message: 'Password must be at least 8 characters' });
     }
 
-    // Check existing user
-    if (email) {
-      const existingEmail = await User.findOne({ email });
-      if (existingEmail) {
-        return res.status(400).json({ success: false, message: 'Email already registered' });
-      }
-    }
-    if (phone) {
-      const existingPhone = await User.findOne({ phone });
-      if (existingPhone) {
-        return res.status(400).json({ success: false, message: 'Phone number already registered' });
-      }
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({ success: false, field: 'email', message: 'This email is already registered. Please log in instead.' });
     }
 
     const user = await User.create({
       fullName,
       email,
-      phone,
       passwordHash: password,
       language: language || 'en',
       locationID,
-      isVerified: true // For demo; in production, verify via email/OTP
+      isVerified: true
+    });
+
+    // Fire-and-forget welcome email — sent to the user's OWN email,
+    // not to the admin SMTP account. Failure here doesn't block registration.
+    sendWelcomeEmail(email, fullName, language || 'en').catch(err => {
+      console.error(`[REGISTER] Welcome email failed for ${email}:`, err.message);
     });
 
     const token = user.generateAuthToken();
@@ -54,12 +58,10 @@ exports.register = async (req, res, next) => {
           id: user._id,
           fullName: user.fullName,
           email: user.email,
-          phone: user.phone,
           role: user.role,
           language: user.language,
           locationID: user.locationID,
-          notifEmail: user.notifEmail,
-          notifSMS: user.notifSMS
+          notifEmail: user.notifEmail
         }
       }
     });
@@ -74,29 +76,44 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
+    if (!email) return res.status(400).json({ success: false, field: 'email', message: 'Please enter your email' });
+    if (!EMAIL_RE.test(email)) return res.status(400).json({ success: false, field: 'email', message: 'Please enter a valid email address' });
+    if (!password) return res.status(400).json({ success: false, field: 'password', message: 'Please enter your password' });
+
     const user = await User.findOne({ email }).select('+passwordHash');
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      return res.status(401).json({ success: false, field: 'email', message: 'No account found with this email. Please register first.' });
     }
 
     // Check if account is locked
     if (user.isLocked()) {
-      return res.status(423).json({ success: false, message: 'Account temporarily locked. Try again later.' });
+      const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
+      return res.status(423).json({
+        success: false,
+        field: 'password',
+        message: `Account locked due to too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft === 1 ? '' : 's'}.`
+      });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      // Increment login attempts
       user.loginAttempts = (user.loginAttempts || 0) + 1;
+      const remaining = Math.max(0, 5 - user.loginAttempts);
       if (user.loginAttempts >= 5) {
         user.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // Lock for 30 minutes
       }
       await user.save();
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      return res.status(401).json({
+        success: false,
+        field: 'password',
+        message: remaining > 0
+          ? `Wrong password. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before account lock.`
+          : 'Wrong password — account is now locked for 30 minutes.'
+      });
     }
 
     if (!user.isActive) {
-      return res.status(401).json({ success: false, message: 'Account is deactivated' });
+      return res.status(401).json({ success: false, field: 'email', message: 'This account has been deactivated. Please contact support.' });
     }
 
     // Reset login attempts
@@ -116,111 +133,11 @@ exports.login = async (req, res, next) => {
           id: user._id,
           fullName: user.fullName,
           email: user.email,
-          phone: user.phone,
           role: user.role,
           language: user.language,
           locationID: user.locationID,
           notifEmail: user.notifEmail,
-          notifSMS: user.notifSMS,
           selectedCrops: user.selectedCrops
-        }
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Request OTP
-// @route   POST /api/auth/request-otp
-exports.requestOTP = async (req, res, next) => {
-  try {
-    const { phone } = req.body;
-    const user = await User.findOne({ phone });
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'No account found with this phone number' });
-    }
-
-    const otp = generateOTP();
-    user.otp = {
-      code: otp,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
-    };
-    await user.save();
-
-    // Send OTP via SMS
-    try {
-      await sendOTPSMS(phone, otp, user.language);
-    } catch (err) {
-      console.error('[OTP] SMS send failed:', err.message);
-    }
-
-    // Also send via email if user has email
-    if (user.email) {
-      try {
-        await sendOTPEmail(user.email, otp, user.language);
-      } catch (err) {
-        console.error('[OTP] Email send failed:', err.message);
-      }
-    }
-
-    console.log(`[OTP] Code generated for ${phone}: ${otp}`);
-
-    res.json({
-      success: true,
-      message: 'OTP sent successfully',
-      otp: process.env.NODE_ENV === 'development' ? otp : undefined
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Verify OTP and login
-// @route   POST /api/auth/verify-otp
-exports.verifyOTP = async (req, res, next) => {
-  try {
-    const { phone, otp } = req.body;
-    const user = await User.findOne({ phone });
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    if (!user.otp || !user.otp.code || !user.otp.expiresAt) {
-      return res.status(400).json({ success: false, message: 'No OTP requested' });
-    }
-
-    if (new Date() > user.otp.expiresAt) {
-      return res.status(400).json({ success: false, message: 'OTP has expired' });
-    }
-
-    if (user.otp.code !== otp) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
-
-    // Clear OTP
-    user.otp = undefined;
-    user.isVerified = true;
-    await user.save();
-
-    const token = user.generateAuthToken();
-    const refreshToken = user.generateRefreshToken();
-
-    res.json({
-      success: true,
-      data: {
-        token,
-        refreshToken,
-        user: {
-          id: user._id,
-          fullName: user.fullName,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          language: user.language,
-          locationID: user.locationID
         }
       }
     });

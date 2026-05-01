@@ -8,7 +8,7 @@ import {
   FiArrowRight, FiBarChart2, FiSearch, FiTool, FiShoppingCart, FiMessageSquare
 } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { SkeletonDashboard } from '../components/ui/Skeleton';
+import Loader from '../components/ui/Loader';
 
 export default function Dashboard() {
   const { t, i18n } = useTranslation();
@@ -63,7 +63,7 @@ export default function Dashboard() {
     return ((price - prev) / prev * 100).toFixed(1);
   };
 
-  if (loading) return <SkeletonDashboard />;
+  if (loading) return <Loader label={isUrdu ? 'ڈیش بورڈ لوڈ ہو رہا ہے…' : 'Loading your dashboard…'} />;
 
   // Quick action cards
   const quickActions = [

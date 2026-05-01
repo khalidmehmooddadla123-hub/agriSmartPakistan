@@ -186,6 +186,94 @@ exports.sendPriceAlertEmail = async (email, alertData, language = 'en') => {
 };
 
 /**
+ * Welcome email after successful registration — sent to the user's own inbox.
+ */
+exports.sendWelcomeEmail = async (email, fullName, language = 'en') => {
+  const transporter = createTransporter();
+  const appUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const firstName = (fullName || '').split(' ')[0] || 'Farmer';
+
+  const subject = language === 'ur'
+    ? `${APP_NAME} میں خوش آمدید، ${firstName}!`
+    : `Welcome to ${APP_NAME}, ${firstName}!`;
+
+  const html = language === 'ur' ? `
+    <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #16a34a, #047857); color: white; padding: 28px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="font-size: 40px;">🌾</div>
+        <h1 style="margin: 8px 0 4px;">${APP_NAME}</h1>
+        <p style="margin: 0; opacity: 0.9; font-size: 14px;">پاکستانی کسانوں کے لیے سمارٹ زراعت</p>
+      </div>
+      <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 12px 12px;">
+        <h2 style="color: #111827; margin: 0 0 12px;">السلام علیکم ${firstName}!</h2>
+        <p style="color: #374151; line-height: 1.7;">
+          آپ کا اکاؤنٹ کامیابی سے بن گیا ہے۔ AgriSmart360 میں آپ کا خیر مقدم ہے!
+        </p>
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px; margin: 18px 0;">
+          <p style="margin: 0 0 10px; font-weight: bold; color: #16a34a;">آپ کیا کر سکتے ہیں:</p>
+          <ul style="margin: 0; padding-${language === 'ur' ? 'right' : 'left'}: 18px; color: #4b5563; line-height: 1.9;">
+            <li>📊 لائیو فصل کی قیمتیں دیکھیں</li>
+            <li>🌤 7-روزہ موسم کی پیشگوئی</li>
+            <li>🔬 AI سے فصل کی بیماری کی تشخیص</li>
+            <li>🧮 آبپاشی، کھاد، عشر کیلکولیٹر</li>
+            <li>🛒 براہ راست خریداروں سے رابطہ</li>
+          </ul>
+        </div>
+        <div style="text-align: center; margin: 24px 0 8px;">
+          <a href="${appUrl}/dashboard" style="background: #16a34a; color: white; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">
+            ڈیش بورڈ کھولیں
+          </a>
+        </div>
+        <p style="color: #6b7280; font-size: 12px; text-align: center; margin-top: 20px;">
+          یہ ای میل آپ کو اس لیے بھیجی گئی کیونکہ آپ نے ${email} سے رجسٹر کیا۔
+        </p>
+      </div>
+    </div>
+  ` : `
+    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #16a34a, #047857); color: white; padding: 28px; text-align: center; border-radius: 12px 12px 0 0;">
+        <div style="font-size: 40px;">🌾</div>
+        <h1 style="margin: 8px 0 4px;">${APP_NAME}</h1>
+        <p style="margin: 0; opacity: 0.9; font-size: 14px;">Smart Farming for Pakistani Farmers</p>
+      </div>
+      <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 12px 12px;">
+        <h2 style="color: #111827; margin: 0 0 12px;">Welcome, ${firstName}!</h2>
+        <p style="color: #374151; line-height: 1.7;">
+          Your AgriSmart360 account is ready. We're excited to help you farm smarter with real-time data and AI-powered insights.
+        </p>
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px; margin: 18px 0;">
+          <p style="margin: 0 0 10px; font-weight: bold; color: #16a34a;">What you can do:</p>
+          <ul style="margin: 0; padding-left: 18px; color: #4b5563; line-height: 1.9;">
+            <li>📊 Track live crop prices across Pakistan</li>
+            <li>🌤 Get 7-day weather forecasts for your district</li>
+            <li>🔬 AI-powered crop disease detection from photos</li>
+            <li>🧮 Smart calculators (irrigation, fertilizer, zakat, EMI)</li>
+            <li>🛒 Sell directly to buyers — skip the middleman</li>
+          </ul>
+        </div>
+        <div style="text-align: center; margin: 24px 0 8px;">
+          <a href="${appUrl}/dashboard" style="background: #16a34a; color: white; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">
+            Open Your Dashboard
+          </a>
+        </div>
+        <p style="color: #6b7280; font-size: 12px; text-align: center; margin-top: 20px;">
+          You're receiving this because you signed up at ${appUrl} with ${email}.
+        </p>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `${APP_NAME} <${FROM_EMAIL()}>`,
+    to: email,
+    subject,
+    html
+  });
+
+  console.log(`[EMAIL] Welcome email sent to ${email}`);
+};
+
+/**
  * Send general notification email
  */
 exports.sendNotificationEmail = async (email, title, message, language = 'en') => {

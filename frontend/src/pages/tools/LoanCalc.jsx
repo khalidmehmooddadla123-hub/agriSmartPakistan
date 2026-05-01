@@ -1,34 +1,59 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Input, Select, Button, Card, StatBox } from '../../components/ui/FormControls';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Bar, BarChart } from 'recharts';
-import { FiDollarSign, FiArrowLeft, FiPercent, FiCalendar, FiTrendingDown, FiInfo } from 'react-icons/fi';
+import { FiDollarSign, FiArrowLeft, FiPercent, FiCalendar, FiTrendingDown, FiInfo, FiClock } from 'react-icons/fi';
+import { loanAPI } from '../../services/api';
 
-// Real Pakistani agri loan providers (rates as of 2026)
-const LOAN_PROVIDERS = [
-  { id: 'ztbl_short', name: 'ZTBL Production Loan', rate: 17.5, maxYears: 1, en: 'For seeds, fertilizer, pesticide', ur: 'بیج، کھاد، دوا کے لیے' },
-  { id: 'ztbl_dev', name: 'ZTBL Development Loan', rate: 19.0, maxYears: 7, en: 'Tubewell, tractor, machinery', ur: 'ٹیوب ویل، ٹریکٹر، مشینری' },
-  { id: 'hbl_kissan', name: 'HBL Kissan Card', rate: 16.5, maxYears: 5, en: 'Multipurpose agri credit', ur: 'متعدد مقاصد قرض' },
-  { id: 'akhuwat', name: 'Akhuwat Foundation', rate: 0, maxYears: 2, en: 'Interest-free Islamic loan', ur: 'بلا سود اسلامی قرض' },
-  { id: 'mcb', name: 'MCB Agri Finance', rate: 18.0, maxYears: 5, en: 'Crop & livestock financing', ur: 'فصل اور مویشی فنانس' },
-  { id: 'ubl_omni', name: 'UBL Omni Kissan', rate: 17.0, maxYears: 3, en: 'Quick crop loans via mobile', ur: 'موبائل پر فوری قرض' },
-  { id: 'kissancard', name: 'Punjab Kissan Card', rate: 0, maxYears: 1, en: '0% interest scheme (Punjab)', ur: 'پنجاب 0% سود' },
-  { id: 'custom', name: 'Custom Rate', rate: 15.0, maxYears: 10, en: 'Manual entry', ur: 'دستی' },
-];
+const CUSTOM_PROVIDER = {
+  _id: 'custom',
+  providerKey: 'custom',
+  name: 'Custom Rate',
+  rate: 15.0,
+  maxYears: 10,
+  descriptionEn: 'Manual entry',
+  descriptionUrdu: 'دستی'
+};
 
 export default function LoanCalc() {
   const { i18n } = useTranslation();
   const isUrdu = i18n.language === 'ur';
 
-  const [provider, setProvider] = useState('ztbl_short');
+  const [providers, setProviders] = useState([]);
+  const [loadingProviders, setLoadingProviders] = useState(true);
+  const [providersError, setProvidersError] = useState(null);
+  const [providerKey, setProviderKey] = useState('');
   const [amount, setAmount] = useState(200000);
   const [tenureYears, setTenureYears] = useState(1);
   const [customRate, setCustomRate] = useState(15);
   const [monthlyIncome, setMonthlyIncome] = useState(50000);
 
-  const selected = LOAN_PROVIDERS.find(p => p.id === provider);
-  const rate = provider === 'custom' ? parseFloat(customRate) : selected.rate;
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingProviders(true);
+    loanAPI.list()
+      .then(res => {
+        if (cancelled) return;
+        const data = Array.isArray(res.data?.data) ? res.data.data : [];
+        const withCustom = [...data, CUSTOM_PROVIDER];
+        setProviders(withCustom);
+        if (data.length > 0) setProviderKey(data[0].providerKey);
+        else setProviderKey('custom');
+        setProvidersError(null);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setProvidersError(err.response?.data?.message || err.message || 'Failed to load loan providers');
+        setProviders([CUSTOM_PROVIDER]);
+        setProviderKey('custom');
+      })
+      .finally(() => { if (!cancelled) setLoadingProviders(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const selected = providers.find(p => p.providerKey === providerKey) || CUSTOM_PROVIDER;
+  const rate = providerKey === 'custom' ? parseFloat(customRate) : selected.rate;
 
   // EMI = P * R * (1+R)^N / ((1+R)^N - 1)
   // Where R = monthly rate, N = total months
@@ -109,27 +134,41 @@ export default function LoanCalc() {
         {/* Input */}
         <Card title={isUrdu ? 'تفصیلات' : 'Loan Details'}>
           <div className="space-y-4">
-            <Select
-              label={isUrdu ? 'بینک / پروگرام' : 'Provider'}
-              value={provider}
-              onChange={(e) => {
-                setProvider(e.target.value);
-                const p = LOAN_PROVIDERS.find(pp => pp.id === e.target.value);
-                if (p && tenureYears > p.maxYears) setTenureYears(p.maxYears);
-              }}
-              options={LOAN_PROVIDERS.map(p => ({ value: p.id, label: p.name }))}
-            />
-            {selected && (
+            {loadingProviders ? (
+              <div className="text-xs text-gray-500 py-2">{isUrdu ? 'لوڈ ہو رہا ہے…' : 'Loading providers…'}</div>
+            ) : (
+              <Select
+                label={isUrdu ? 'بینک / پروگرام' : 'Provider'}
+                value={providerKey}
+                onChange={(e) => {
+                  setProviderKey(e.target.value);
+                  const p = providers.find(pp => pp.providerKey === e.target.value);
+                  if (p && tenureYears > p.maxYears) setTenureYears(p.maxYears);
+                }}
+                options={providers.map(p => ({ value: p.providerKey, label: p.name }))}
+              />
+            )}
+            {providersError && (
+              <div className="text-[11px] text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                {isUrdu ? 'بینک ڈیٹا لوڈ نہیں ہوا، دستی شرح استعمال کریں' : 'Bank list unavailable — use Custom Rate'}
+              </div>
+            )}
+            {selected && providerKey !== 'custom' && (
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5">
                 <p className="text-[11px] text-blue-700 font-semibold">
                   {selected.rate}% {isUrdu ? 'شرح سود' : 'rate'} · {isUrdu ? 'زیادہ سے زیادہ' : 'max'} {selected.maxYears} {isUrdu ? 'سال' : 'yrs'}
                 </p>
                 <p className="text-[10.5px] text-blue-600 mt-0.5">
-                  {isUrdu ? selected.ur : selected.en}
+                  {isUrdu ? (selected.descriptionUrdu || selected.descriptionEn) : selected.descriptionEn}
                 </p>
+                {selected.lastVerifiedAt && (
+                  <p className="text-[10px] text-blue-500/80 mt-1 flex items-center gap-1">
+                    <FiClock size={9} /> {isUrdu ? 'تصدیق شدہ:' : 'Verified:'} {new Date(selected.lastVerifiedAt).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </p>
+                )}
               </div>
             )}
-            {provider === 'custom' && (
+            {providerKey === 'custom' && (
               <Input
                 label={isUrdu ? 'اپنی شرح سود (%)' : 'Custom Interest Rate (%)'}
                 icon={FiPercent}

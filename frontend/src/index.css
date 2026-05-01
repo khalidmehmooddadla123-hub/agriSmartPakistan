@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Nastaliq+Urdu:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Amiri:wght@400;700&display=swap');
 
 @import "tailwindcss";
 
@@ -50,11 +50,46 @@ img, video, canvas {
   display: block;
 }
 
+/* === Urdu / RTL typography ===
+   Use Noto Naskh Arabic for general UI text (clean, readable, works in small UI elements).
+   Reserve Noto Nastaliq Urdu for prose blocks where calligraphic flow matters (.font-nastaliq).
+   This keeps buttons, navs, forms, tables readable instead of squashed. */
 [dir="rtl"] body,
 [dir="rtl"] * {
-  font-family: 'Noto Nastaliq Urdu', 'Segoe UI', sans-serif;
+  font-family: 'Noto Naskh Arabic', 'Segoe UI', 'Tahoma', sans-serif;
   letter-spacing: 0;
 }
+[dir="rtl"] {
+  line-height: 1.7;
+}
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4 {
+  line-height: 1.5;
+}
+[dir="rtl"] input, [dir="rtl"] textarea, [dir="rtl"] select, [dir="rtl"] button {
+  font-family: 'Noto Naskh Arabic', 'Segoe UI', sans-serif;
+}
+[dir="rtl"] kbd, [dir="rtl"] code, [dir="rtl"] pre, [dir="rtl"] .font-mono {
+  font-family: 'SF Mono', Consolas, monospace;
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+/* Decorative Nastaliq (opt-in for prose / hero text) */
+.font-nastaliq {
+  font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif !important;
+  line-height: 2.2 !important;
+}
+
+/* Numbers should always render with the Latin font for clarity (prices, dates, %) */
+[dir="rtl"] .num, [dir="rtl"] .price, [dir="rtl"] .stat-value {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  direction: ltr;
+  unicode-bidi: embed;
+  display: inline-block;
+}
+
+/* Ensure flex items inside RTL get proper gap behavior */
+[dir="rtl"] .flex-row-reverse-rtl { flex-direction: row-reverse; }
 
 /* Enhanced scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -82,6 +117,44 @@ button, a, input, select, textarea {
 /* Nice selection color */
 ::selection { background: var(--brand-100); color: var(--brand-700); }
 
+/* === App shell: subtle emerald-tinted layout (not pure white) === */
+.app-shell {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(16, 185, 129, 0.05) 0, transparent 35%),
+    radial-gradient(circle at 100% 100%, rgba(20, 184, 166, 0.04) 0, transparent 35%),
+    linear-gradient(180deg, #f6faf8 0%, #f3f7f5 100%);
+}
+
+.app-navbar {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(240, 253, 244, 0.85) 100%);
+  border-color: rgba(187, 247, 208, 0.7);
+}
+
+.app-sidebar {
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f0fdf4 50%, #ffffff 100%);
+  border-color: rgba(187, 247, 208, 0.7);
+}
+
+/* Dark variants */
+.dark .app-shell {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(16, 185, 129, 0.06) 0, transparent 35%),
+    radial-gradient(circle at 100% 100%, rgba(20, 184, 166, 0.05) 0, transparent 35%),
+    linear-gradient(180deg, #0b1220 0%, #0a1a16 100%);
+}
+
+.dark .app-navbar {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.92) 0%, rgba(6, 78, 59, 0.4) 100%);
+  border-color: rgba(6, 95, 70, 0.4);
+}
+
+.dark .app-sidebar {
+  background:
+    linear-gradient(180deg, #0f172a 0%, #052e1f 50%, #0f172a 100%);
+  border-color: rgba(6, 95, 70, 0.4);
+}
+
 /* Card default shadow */
 .card-soft {
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
@@ -95,6 +168,20 @@ button, a, input, select, textarea {
 
 /* Better text shadows for gradient cards */
 .text-shadow-soft { text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+
+/* Arabic typography */
+.font-arabic {
+  font-family: 'Amiri', 'Scheherazade New', 'Traditional Arabic', serif;
+  line-height: 1.9;
+  letter-spacing: 0;
+}
+
+/* Islamic decorative pattern (CSS-only) */
+.islamic-pattern {
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(255, 215, 0, 0.04) 0, transparent 30%),
+    radial-gradient(circle at 80% 50%, rgba(255, 215, 0, 0.04) 0, transparent 30%);
+}
 
 /* Animation for skeletons */
 @keyframes shimmer {
@@ -114,6 +201,124 @@ button, a, input, select, textarea {
 }
 .animate-fade-in-up { animation: fadeInUp 0.3s ease-out; }
 
+/* Richer animation set used by landing + splash */
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+.animate-fade-in { animation: fadeIn 0.6s ease-out both; }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slideUp 0.7s cubic-bezier(.2,.8,.2,1) both; }
+
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-32px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-right { animation: slideRight 0.7s cubic-bezier(.2,.8,.2,1) both; }
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in { animation: scaleIn 0.55s cubic-bezier(.2,.8,.2,1) both; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-float { animation: float 4.5s ease-in-out infinite; }
+
+@keyframes pulseRing {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.animate-pulse-ring { animation: pulseRing 1.6s cubic-bezier(.2,.8,.2,1) infinite; }
+
+@keyframes spinSlow { to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spinSlow 16s linear infinite; }
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-gradient { background-size: 200% 200%; animation: gradientShift 8s ease infinite; }
+
+/* Animation delays utility */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-700 { animation-delay: 0.7s; }
+.delay-1000 { animation-delay: 1s; }
+
+/* Splash exit */
+@keyframes splashOut {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05); pointer-events: none; }
+}
+.splash-leave { animation: splashOut 0.6s cubic-bezier(.6,.05,.3,.95) forwards; }
+
+/* Bismillah glow effects — for the opening intro */
+@keyframes glowIn {
+  0% { opacity: 0; transform: scale(0.85); filter: blur(8px) brightness(0.5); text-shadow: 0 0 0 transparent; }
+  60% { filter: blur(0) brightness(1.3); }
+  100% {
+    opacity: 1; transform: scale(1); filter: blur(0) brightness(1);
+    text-shadow:
+      0 0 25px rgba(255, 215, 0, 0.55),
+      0 0 50px rgba(255, 215, 0, 0.3),
+      0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+.animate-glow-in { animation: glowIn 0.9s cubic-bezier(.2,.8,.2,1) both; }
+
+@keyframes glowPulse {
+  0%, 100% {
+    text-shadow:
+      0 0 25px rgba(255, 215, 0, 0.5),
+      0 0 50px rgba(255, 215, 0, 0.25),
+      0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    text-shadow:
+      0 0 45px rgba(255, 215, 0, 0.85),
+      0 0 90px rgba(255, 215, 0, 0.5),
+      0 0 130px rgba(255, 215, 0, 0.3),
+      0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+.animate-glow-pulse { animation: glowPulse 2s ease-in-out infinite; }
+
+@keyframes glowBurst {
+  0% { opacity: 1; transform: scale(1); filter: brightness(1) blur(0); }
+  40% {
+    opacity: 1; transform: scale(1.06);
+    filter: brightness(1.6) blur(0.5px);
+  }
+  100% { opacity: 0; transform: scale(1.15); filter: brightness(2.5) blur(8px); pointer-events: none; }
+}
+.bismillah-leave { animation: glowBurst 0.7s cubic-bezier(.4,0,.2,1) forwards; }
+
+@keyframes bgGlow {
+  0%, 100% { box-shadow: inset 0 0 100px rgba(255, 215, 0, 0.05), inset 0 0 200px rgba(16, 185, 129, 0.06); }
+  50% { box-shadow: inset 0 0 180px rgba(255, 215, 0, 0.12), inset 0 0 320px rgba(16, 185, 129, 0.12); }
+}
+.animate-bg-glow { animation: bgGlow 2.5s ease-in-out infinite; }
+
+/* Reveal-on-scroll */
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s cubic-bezier(.2,.8,.2,1), transform 0.7s cubic-bezier(.2,.8,.2,1); }
+.reveal.is-visible { opacity: 1; transform: translateY(0); }
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float, .animate-pulse-ring, .animate-spin-slow, .animate-gradient {
+    animation: none !important;
+  }
+  .reveal { opacity: 1; transform: none; }
+}
+
 /* Dark Mode */
 .dark body { background-color: #0b1220; color: #e4e7ec; }
 
@@ -128,6 +333,8 @@ button, a, input, select, textarea {
 .dark .text-gray-400 { color: #6b7280; }
 
 .dark .border-gray-200, .dark .border-gray-100 { border-color: #1f2937; }
+.dark .border-emerald-100 { border-color: rgba(6, 95, 70, 0.4); }
+.dark .border-green-100 { border-color: rgba(6, 95, 70, 0.4); }
 
 .dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.12); }
 .dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.12); }

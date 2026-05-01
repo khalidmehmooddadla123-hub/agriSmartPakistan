@@ -46,25 +46,35 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting
+// Rate limiting — generous global cap to keep the app usable on shared IPs/networks.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window per IP
+  max: 500, // 500 requests per window per IP
   message: { success: false, message: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false
 });
 
+// Auth limiter — only brute-forceable endpoints (login, register, OTP, password reset).
+// Excludes /me and /refresh-token which are routine and called on every refresh.
+// `skipSuccessfulRequests: true` means legitimate logins do NOT consume the budget —
+// only failed attempts count, which is what protects against brute force.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20, // stricter for auth routes
-  message: { success: false, message: 'Too many login attempts, please try again later.' },
+  max: 30,
+  skipSuccessfulRequests: true,
+  message: { success: false, message: 'Too many failed login attempts. Please wait 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false
 });
 
 app.use('/api/', apiLimiter);
-app.use('/api/auth/', authLimiter);
+
+// Apply auth limiter only to the routes that need brute-force protection
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
@@ -109,6 +119,8 @@ app.use('/api/soil-tests', require('./routes/soilTests'));
 app.use('/api/equipment', require('./routes/equipment'));
 app.use('/api/crop-loss', require('./routes/cropLoss'));
 app.use('/api/crop-id', require('./routes/cropID'));
+app.use('/api/subsidies', require('./routes/subsidies'));
+app.use('/api/loan-providers', require('./routes/loanProviders'));
 app.use('/uploads', require('express').static(require('path').join(__dirname, 'uploads')));
 
 // Root — friendly welcome page

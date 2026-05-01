@@ -9,6 +9,8 @@ const Price = require('../models/Price');
 const News = require('../models/News');
 const Location = require('../models/Location');
 const Notification = require('../models/Notification');
+const Subsidy = require('../models/Subsidy');
+const LoanProvider = require('../models/LoanProvider');
 
 // Configure multer for news image uploads
 const newsStorage = multer.diskStorage({
@@ -74,6 +76,22 @@ router.delete('/users/:id', async (req, res, next) => {
 });
 
 // ============ CROPS ============
+router.get('/crops', async (req, res, next) => {
+  try {
+    const { search } = req.query;
+    const filter = {};
+    if (search) {
+      filter.$or = [
+        { cropName: { $regex: search, $options: 'i' } },
+        { cropNameUrdu: { $regex: search } },
+        { category: { $regex: search, $options: 'i' } }
+      ];
+    }
+    const items = await Crop.find(filter).sort({ cropName: 1 });
+    res.json({ success: true, count: items.length, data: items });
+  } catch (error) { next(error); }
+});
+
 router.post('/crops', async (req, res, next) => {
   try {
     const crop = await Crop.create(req.body);
@@ -97,6 +115,25 @@ router.delete('/crops/:id', async (req, res, next) => {
 });
 
 // ============ PRICES ============
+router.get('/prices', async (req, res, next) => {
+  try {
+    const { page = 1, limit = 30, priceType, cropID, locationID } = req.query;
+    const filter = {};
+    if (priceType) filter.priceType = priceType;
+    if (cropID) filter.cropID = cropID;
+    if (locationID) filter.locationID = locationID;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Price.countDocuments(filter);
+    const items = await Price.find(filter)
+      .populate('cropID', 'cropName cropNameUrdu unit')
+      .populate('locationID', 'city province')
+      .sort({ recordedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    res.json({ success: true, total, count: items.length, data: items });
+  } catch (error) { next(error); }
+});
+
 router.post('/prices', async (req, res, next) => {
   try {
     const price = await Price.create(req.body);
@@ -166,6 +203,29 @@ router.delete('/news/:id', async (req, res, next) => {
 });
 
 // ============ LOCATIONS ============
+router.get('/locations', async (req, res, next) => {
+  try {
+    const { page = 1, limit = 50, search, province } = req.query;
+    const filter = {};
+    if (province) filter.province = province;
+    if (search) {
+      filter.$or = [
+        { city: { $regex: search, $options: 'i' } },
+        { cityUrdu: { $regex: search } },
+        { district: { $regex: search, $options: 'i' } },
+        { province: { $regex: search, $options: 'i' } }
+      ];
+    }
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Location.countDocuments(filter);
+    const items = await Location.find(filter)
+      .sort({ province: 1, district: 1, city: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    res.json({ success: true, total, count: items.length, data: items });
+  } catch (error) { next(error); }
+});
+
 router.post('/locations', async (req, res, next) => {
   try {
     const location = await Location.create(req.body);
@@ -192,20 +252,121 @@ router.delete('/locations/:id', async (req, res, next) => {
 router.post('/notifications/broadcast', async (req, res, next) => {
   try {
     const { title, message, type = 'broadcast' } = req.body;
-    const users = await User.find({ isActive: true }).select('_id');
+    if (!title || !message) {
+      return res.status(400).json({ success: false, message: 'Title and message are required' });
+    }
 
+    // Pull each user with their own email + language + email-opt-in flag
+    const users = await User.find({ isActive: true }).select('_id email language notifEmail');
+
+    // Always create the in-app notification (every user sees it in the bell)
     const notifications = users.map(u => ({
       userID: u._id,
-      type,
-      title,
-      message,
-      channel: 'in-app',
-      isSent: true,
-      sentAt: new Date()
+      type, title, message,
+      channel: 'in-app', isSent: true, sentAt: new Date()
+    }));
+    await Notification.insertMany(notifications);
+
+    // Fan-out emails — each user gets the email at THEIR OWN registered address.
+    // Skipped silently for users without an email or with email-opt-out.
+    const { sendNotificationEmail } = require('../services/emailService');
+    let emailed = 0, skipped = 0, failed = 0;
+    await Promise.all(users.map(async (u) => {
+      if (!u.email || !u.notifEmail) { skipped++; return; }
+      try {
+        await sendNotificationEmail(u.email, title, message, u.language || 'en');
+        // Log the email channel separately so admins can audit
+        await Notification.create({
+          userID: u._id, type, title, message,
+          channel: 'email', isSent: true, sentAt: new Date()
+        });
+        emailed++;
+      } catch (err) {
+        console.error(`[BROADCAST] Email failed for ${u.email}:`, err.message);
+        failed++;
+      }
     }));
 
-    await Notification.insertMany(notifications);
-    res.json({ success: true, message: `Broadcast sent to ${users.length} users` });
+    res.json({
+      success: true,
+      message: `Broadcast delivered: ${users.length} in-app, ${emailed} emailed${skipped ? `, ${skipped} skipped (no email/opt-out)` : ''}${failed ? `, ${failed} failed` : ''}`,
+      stats: { total: users.length, emailed, skipped, failed }
+    });
+  } catch (error) { next(error); }
+});
+
+// ============ SUBSIDIES ============
+router.get('/subsidies', async (req, res, next) => {
+  try {
+    const items = await Subsidy.find().sort({ category: 1, name: 1 });
+    res.json({ success: true, count: items.length, data: items });
+  } catch (error) { next(error); }
+});
+
+router.post('/subsidies', async (req, res, next) => {
+  try {
+    if (req.body.lastVerifiedAt === undefined) req.body.lastVerifiedAt = new Date();
+    const item = await Subsidy.create(req.body);
+    res.status(201).json({ success: true, data: item });
+  } catch (error) { next(error); }
+});
+
+router.put('/subsidies/:id', async (req, res, next) => {
+  try {
+    // Only refresh verification timestamp if admin explicitly requested it
+    if (req.body.refreshVerification) {
+      req.body.lastVerifiedAt = new Date();
+      delete req.body.refreshVerification;
+    } else {
+      delete req.body.lastVerifiedAt; // never silently overwrite
+    }
+    const item = await Subsidy.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!item) return res.status(404).json({ success: false, message: 'Subsidy not found' });
+    res.json({ success: true, data: item });
+  } catch (error) { next(error); }
+});
+
+router.delete('/subsidies/:id', async (req, res, next) => {
+  try {
+    await Subsidy.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Subsidy deleted' });
+  } catch (error) { next(error); }
+});
+
+// ============ LOAN PROVIDERS ============
+router.get('/loan-providers', async (req, res, next) => {
+  try {
+    const items = await LoanProvider.find().sort({ rate: 1 });
+    res.json({ success: true, count: items.length, data: items });
+  } catch (error) { next(error); }
+});
+
+router.post('/loan-providers', async (req, res, next) => {
+  try {
+    if (req.body.lastVerifiedAt === undefined) req.body.lastVerifiedAt = new Date();
+    const item = await LoanProvider.create(req.body);
+    res.status(201).json({ success: true, data: item });
+  } catch (error) { next(error); }
+});
+
+router.put('/loan-providers/:id', async (req, res, next) => {
+  try {
+    if (req.body.refreshVerification) {
+      req.body.lastVerifiedAt = new Date();
+      delete req.body.refreshVerification;
+    } else {
+      delete req.body.lastVerifiedAt;
+    }
+    const item = await LoanProvider.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!item) return res.status(404).json({ success: false, message: 'Loan provider not found' });
+    res.json({ success: true, data: item });
+  } catch (error) { next(error); }
+});
+
+router.delete('/loan-providers/:id', async (req, res, next) => {
+  try {
+    await LoanProvider.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Loan provider deleted' });
   } catch (error) { next(error); }
 });
 

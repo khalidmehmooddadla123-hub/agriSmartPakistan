@@ -101,7 +101,7 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in-up">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in-up">
       <div className="w-full max-w-2xl">
         {/* Skip top-right */}
         <div className="flex justify-end mb-4">

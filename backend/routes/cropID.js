@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { protect } = require('../middleware/auth');
-const { identifyCrop } = require('../services/aiChatService');
+const { identifyCrop, agriImageGate } = require('../services/aiChatService');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -25,6 +25,19 @@ router.post('/', protect, upload.single('image'), async (req, res, next) => {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Image required' });
     }
+
+    // Off-topic guard: reject non-agri images before running crop identification
+    const gate = await agriImageGate(req.file.buffer, req.file.mimetype);
+    if (gate && gate.isAgri === false) {
+      return res.status(422).json({
+        success: false,
+        offTopic: true,
+        subject: gate.subject || gate.kind || 'unknown',
+        message: `This image doesn't show a crop or plant (${gate.subject || gate.kind || 'unrecognized'}). Please upload a clear photo of a crop, leaf, fruit, or plant.`,
+        messageUrdu: 'یہ تصویر کسی فصل یا پودے کی نہیں لگتی۔ براہ کرم فصل، پتے، پھل، یا پودے کی واضح تصویر اپلوڈ کریں۔'
+      });
+    }
+
     const result = await identifyCrop(req.file.buffer, req.file.mimetype, req.body.language || 'en');
     if (!result) {
       return res.status(503).json({ success: false, message: 'AI service unavailable. Try again later.' });

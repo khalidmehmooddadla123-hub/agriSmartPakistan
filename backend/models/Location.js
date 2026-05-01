@@ -31,6 +31,15 @@ const locationSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  district: {
+    type: String,
+    trim: true,
+    index: true
+  },
+  districtUrdu: {
+    type: String,
+    trim: true
+  },
   latitude: {
     type: Number
   },

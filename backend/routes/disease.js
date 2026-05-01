@@ -3,8 +3,9 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const { protect } = require('../middleware/auth');
+const fs = require('fs');
 const { detectDisease, chatResponse, getDiseasesByCrop, diseaseDatabase } = require('../services/diseaseService');
-const { chatWithAI } = require('../services/aiChatService');
+const { chatWithAI, agriImageGate, agriTextGate, plantImageGate } = require('../services/aiChatService');
 const { detectDiseaseFromImage } = require('../services/mlDiseaseService');
 const DiseaseReport = require('../models/DiseaseReport');
 
@@ -55,6 +56,41 @@ router.post('/detect', protect, upload.single('image'), async (req, res, next) =
         success: false,
         message: 'Please upload an image or provide a description of symptoms'
       });
+    }
+
+    // === STRICT plant-only guard for disease scanner ===
+    // The Hugging Face plant-disease model will hallucinate a fake diagnosis
+    // for any image (cat, building, food). We must reject non-plant images
+    // BEFORE running the ML pipeline. This gate fails CLOSED — if Gemini is
+    // unreachable, we still reject (better than a false diagnosis).
+    if (req.file) {
+      const buf = fs.readFileSync(req.file.path);
+      const gate = await plantImageGate(buf, req.file.mimetype);
+      console.log(`[DETECT] Plant gate: isPlant=${gate.isPlant} subject="${gate.subject}" conf=${gate.confidence} (${gate.source})`);
+
+      if (!gate.isPlant) {
+        // Clean up the rejected upload to save disk
+        try { fs.unlinkSync(req.file.path); } catch {}
+        return res.status(422).json({
+          success: false,
+          offTopic: true,
+          subject: gate.subject || 'unknown',
+          confidence: gate.confidence,
+          message: `This image doesn't show a plant or leaf — detected: ${gate.subject || 'unrecognized'}. The disease scanner only works on photos of plant material (leaves, fruits, vegetables, or crop fields). Please upload a clear photo of the affected plant.`,
+          messageUrdu: `یہ تصویر کسی پودے یا پتے کی نہیں ہے — اس میں ${gate.subject || 'نامعلوم'} نظر آ رہا ہے۔ بیماری کا اسکینر صرف پودوں کی تصاویر (پتے، پھل، سبزیاں، یا فصل کے کھیت) پر کام کرتا ہے۔ براہ کرم متاثرہ پودے کی واضح تصویر اپلوڈ کریں۔`
+        });
+      }
+    } else if (description) {
+      // For description-only requests, run text gate too
+      const txtGate = await agriTextGate(description);
+      if (txtGate && txtGate.isAgri === false) {
+        return res.status(422).json({
+          success: false,
+          offTopic: true,
+          message: 'Your description doesn\'t look farming-related. Please describe symptoms of a crop, plant, or livestock issue.',
+          messageUrdu: 'آپ کی تفصیل زراعت سے متعلق نہیں لگتی۔ براہ کرم فصل، پودے یا مویشی کی علامات بیان کریں۔'
+        });
+      }
     }
 
     // Try ML-based detection first (falls back to keyword if HF unavailable)
@@ -146,13 +182,32 @@ router.post('/detect', protect, upload.single('image'), async (req, res, next) =
 router.post('/chat', protect, async (req, res, next) => {
   try {
     const { message, language, history } = req.body;
+    const lang = language || 'en';
+    const isUrdu = lang === 'ur';
 
     if (!message) {
       return res.status(400).json({ success: false, message: 'Message is required' });
     }
 
+    // Off-topic guard: refuse non-agriculture questions cleanly
+    const gate = await agriTextGate(message);
+    if (gate && gate.isAgri === false) {
+      return res.json({
+        success: true,
+        data: {
+          offTopic: true,
+          topic: gate.topic || 'unrelated',
+          reply: isUrdu
+            ? `یہ سوال زراعت یا کاشتکاری سے متعلق نہیں لگتا۔ میں صرف فصلوں، بیماریوں، موسم، آبپاشی، کھاد، اور کسانوں کے سوالات کا جواب دے سکتا ہوں۔ براہ کرم کوئی زرعی سوال پوچھیں۔`
+            : `This question doesn't appear to be about farming or agriculture. I can only help with crops, diseases, weather, irrigation, fertilizers, livestock, and other farming topics. Please ask me an agriculture-related question.`,
+          source: 'gate',
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+
     // Use AI chat service (falls back to keyword-based if Gemini not configured)
-    const result = await chatWithAI(message, language || 'en', history || []);
+    const result = await chatWithAI(message, lang, history || []);
 
     res.json({
       success: true,

@@ -34,17 +34,24 @@ export default function CropIdentifier() {
       return;
     }
     setLoading(true);
+    setResult(null);
     try {
       const formData = new FormData();
       formData.append('image', image);
       formData.append('language', i18n.language);
       const res = await api.post('/crop-id', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        _silentToast: true
       });
       setResult(res.data.data);
       toast.success(isUrdu ? 'AI تجزیہ مکمل!' : 'AI analysis complete!');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed');
+      const data = err.response?.data;
+      if (data?.offTopic) {
+        setResult({ offTopic: true, message: isUrdu ? data.messageUrdu : data.message, subject: data.subject });
+      } else {
+        toast.error(data?.message || 'Failed');
+      }
     } finally { setLoading(false); }
   };
 
@@ -122,6 +129,19 @@ export default function CropIdentifier() {
             <div className="text-center py-12 text-gray-400">
               <div className="text-5xl mb-3">🔍</div>
               <p className="text-sm">{isUrdu ? 'تصویر اپ لوڈ کریں اور تجزیہ کریں' : 'Upload an image to begin'}</p>
+            </div>
+          ) : result.offTopic ? (
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-6 text-center animate-fade-in-up">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-amber-100 flex items-center justify-center text-2xl">🌾❌</div>
+              <h3 className="text-base font-bold text-amber-900 mb-1.5">
+                {isUrdu ? 'یہ زراعت سے متعلق نہیں' : 'Not agriculture-related'}
+              </h3>
+              <p className="text-xs text-amber-800 leading-relaxed">{result.message}</p>
+              {result.subject && (
+                <p className="text-[10.5px] text-amber-700/80 mt-2">
+                  {isUrdu ? 'تصویر:' : 'Detected:'} <strong>{result.subject}</strong>
+                </p>
+              )}
             </div>
           ) : result.cropName === 'Not a crop' || result.confidence === 0 ? (
             <div className="text-center py-8">

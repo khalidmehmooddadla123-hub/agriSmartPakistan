@@ -32,8 +32,7 @@ const authController = require('../controllers/authController');
  */
 router.post('/register', [
   body('fullName').trim().notEmpty().withMessage('Full name is required').isLength({ max: 100 }),
-  body('email').optional().isEmail().withMessage('Please provide a valid email'),
-  body('phone').optional().trim().notEmpty(),
+  body('email').isEmail().withMessage('Please provide a valid email'),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('language').optional().isIn(['en', 'ur']),
   validate
@@ -66,56 +65,6 @@ router.post('/login', [
   body('password').notEmpty().withMessage('Password is required'),
   validate
 ], authController.login);
-
-/**
- * @swagger
- * /auth/request-otp:
- *   post:
- *     summary: Request OTP for phone login
- *     tags: [Authentication]
- *     security: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               phone: { type: string, example: "+923001234567" }
- *     responses:
- *       200: { description: OTP sent successfully }
- *       404: { description: No account found }
- */
-router.post('/request-otp', [
-  body('phone').notEmpty().withMessage('Phone number is required'),
-  validate
-], authController.requestOTP);
-
-/**
- * @swagger
- * /auth/verify-otp:
- *   post:
- *     summary: Verify OTP and login
- *     tags: [Authentication]
- *     security: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               phone: { type: string, example: "+923001234567" }
- *               otp: { type: string, example: "123456" }
- *     responses:
- *       200: { description: OTP verified, returns token }
- *       400: { description: Invalid or expired OTP }
- */
-router.post('/verify-otp', [
-  body('phone').notEmpty().withMessage('Phone number is required'),
-  body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
-  validate
-], authController.verifyOTP);
 
 /**
  * @swagger

@@ -26,45 +26,18 @@ cron.schedule('*/30 * * * *', async () => {
   }
 });
 
-// Simulate price updates every 30 minutes (demo mode)
-cron.schedule('*/30 * * * *', async () => {
+// Price freshness check — once daily at 6:30 AM PKT
+// Prices are admin-managed (sourced from AMIS Punjab, PBS, ZTBL bulletins)
+// NO random simulation. We just log staleness so admins know when to refresh.
+cron.schedule('30 6 * * *', async () => {
   try {
-    console.log('[CRON] Checking for price updates...');
-    // In production, this would fetch from real crop price APIs
-    // For demo, we add slight variations to existing prices
-    const crops = await Crop.find({ isActive: true });
-    if (crops.length === 0) return;
-
-    for (const crop of crops) {
-      const latestPrice = await Price.findOne({ cropID: crop._id, priceType: 'national' })
-        .sort({ recordedAt: -1 });
-
-      if (latestPrice) {
-        const variation = (Math.random() - 0.5) * 0.04; // +/- 2%
-        const newPrice = Math.round(latestPrice.price * (1 + variation));
-
-        // Only create new record if more than 25 minutes old
-        const timeDiff = Date.now() - new Date(latestPrice.recordedAt).getTime();
-        if (timeDiff > 25 * 60 * 1000) {
-          await Price.create({
-            cropID: crop._id,
-            locationID: latestPrice.locationID,
-            price: newPrice,
-            previousPrice: latestPrice.price,
-            currency: latestPrice.currency,
-            priceType: latestPrice.priceType,
-            msp: latestPrice.msp,
-            source: 'auto-update',
-            recordedAt: new Date()
-          });
-        }
-      }
-    }
-    console.log('[CRON] Price check complete');
+    const { fetchAndStorePrices } = require('./priceService');
+    const result = await fetchAndStorePrices();
+    console.log(`[CRON] Price freshness check: ${result.stale} stale crops, ${result.updated} updated from external source`);
   } catch (error) {
-    console.error('[CRON] Price update error:', error.message);
+    console.error('[CRON] Price freshness error:', error.message);
   }
-});
+}, { timezone: 'Asia/Karachi' });
 
 // Check price alerts every 30 minutes (runs after price updates)
 cron.schedule('5,35 * * * *', async () => {
@@ -251,7 +224,7 @@ cron.schedule('30 7 * * *', async () => {
 console.log('[CRON] Scheduled jobs initialized');
 console.log('[CRON] Active jobs:');
 console.log('  - Weather refresh: every 30 min');
-console.log('  - Price updates: every 30 min');
+console.log('  - Price freshness check: 6:30 AM PKT daily (admin-managed prices)');
 console.log('  - Price alerts: every 30 min (offset +5)');
 console.log('  - News refresh: every 3 hours');
 console.log('  - Weather alerts: every hour');

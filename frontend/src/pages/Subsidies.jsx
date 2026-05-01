@@ -1,126 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Card, Input, Select, Button } from '../components/ui/FormControls';
-import { FiBook, FiArrowLeft, FiExternalLink, FiCheckCircle, FiXCircle, FiAlertCircle } from 'react-icons/fi';
-
-const SCHEMES = [
-  {
-    id: 'kissan_card',
-    name: 'Kissan Card (Punjab)', nameUrdu: 'کسان کارڈ (پنجاب)',
-    category: 'subsidy',
-    provider: 'Govt of Punjab',
-    description: 'Interest-free loans up to PKR 150,000 for small farmers. Can be used for seed, fertilizer, pesticide purchases.',
-    descriptionUrdu: 'چھوٹے کسانوں کے لیے 150,000 روپے تک بلاسود قرض۔ بیج، کھاد، دوا کے لیے استعمال ہو سکتا ہے۔',
-    eligibility: { maxLandAcres: 12.5, requiresCNIC: true, province: 'Punjab' },
-    benefits: 'Up to PKR 150,000 interest-free credit',
-    benefitsUrdu: '150,000 روپے تک بلاسود قرض',
-    link: 'https://kissancard.punjab.gov.pk/',
-    emoji: '💳'
-  },
-  {
-    id: 'urea_subsidy',
-    name: 'Urea Fertilizer Subsidy', nameUrdu: 'یوریا کھاد سبسڈی',
-    category: 'subsidy',
-    provider: 'Federal Govt',
-    description: 'Fixed subsidized urea price. Farmers can buy at reduced rates through CNIC-linked quota system.',
-    descriptionUrdu: 'یوریا کی مقررہ سبسڈی والی قیمت۔ کسان شناختی کارڈ کے ذریعے کم نرخوں پر خرید سکتے ہیں۔',
-    eligibility: { maxLandAcres: null, requiresCNIC: true, province: null },
-    benefits: 'PKR 1,000-2,000 savings per bag',
-    benefitsUrdu: 'فی بوری 1,000-2,000 روپے کی بچت',
-    link: 'https://www.finance.gov.pk/',
-    emoji: '🧪'
-  },
-  {
-    id: 'benazir_hari_card',
-    name: 'Benazir Hari Card', nameUrdu: 'بینظیر ہاری کارڈ',
-    category: 'subsidy',
-    provider: 'Govt of Sindh',
-    description: 'PKR 100,000 interest-free loan for Sindh farmers. Direct cash transfer for agricultural inputs.',
-    descriptionUrdu: 'سندھ کے کسانوں کے لیے 100,000 روپے بلاسود قرض۔',
-    eligibility: { maxLandAcres: 16, requiresCNIC: true, province: 'Sindh' },
-    benefits: 'PKR 100,000 grant',
-    benefitsUrdu: '1 لاکھ روپے کا گرانٹ',
-    link: 'https://www.sindh.gov.pk/',
-    emoji: '💰'
-  },
-  {
-    id: 'zarai_taraqiati_bank_loan',
-    name: 'ZTBL Agricultural Loan', nameUrdu: 'زرعی ترقیاتی بینک قرض',
-    category: 'loan',
-    provider: 'Zarai Taraqiati Bank',
-    description: 'Crop production loans, tubewell loans, tractor loans at subsidized interest rates for farmers nationwide.',
-    descriptionUrdu: 'فصل پیداوار، ٹیوب ویل، ٹریکٹر قرض کم شرح سود پر۔',
-    eligibility: { maxLandAcres: null, requiresCNIC: true, province: null },
-    benefits: 'Loans up to PKR 5 million',
-    benefitsUrdu: '50 لاکھ روپے تک قرض',
-    link: 'https://www.ztbl.com.pk/',
-    emoji: '🏦'
-  },
-  {
-    id: 'crop_insurance',
-    name: 'National Crop Insurance Scheme', nameUrdu: 'قومی فصل بیمہ اسکیم',
-    category: 'insurance',
-    provider: 'Federal Govt + Insurance Cos',
-    description: 'Insurance cover against floods, droughts, pest attacks. Premium partially subsidized by government.',
-    descriptionUrdu: 'سیلاب، خشک سالی، کیڑوں سے نقصان کا بیمہ۔',
-    eligibility: { maxLandAcres: null, requiresCNIC: true, province: null },
-    benefits: 'Claim up to 100% crop loss',
-    benefitsUrdu: 'فصل کا 100% نقصان کلیم',
-    link: 'https://www.secp.gov.pk/',
-    emoji: '🛡'
-  },
-  {
-    id: 'solar_tubewell',
-    name: 'Solar Tubewell Subsidy', nameUrdu: 'سولر ٹیوب ویل سبسڈی',
-    category: 'subsidy',
-    provider: 'Punjab Agriculture Dept',
-    description: '60% subsidy on solar-powered tubewells for irrigation. Reduces electricity cost dramatically.',
-    descriptionUrdu: 'سولر ٹیوب ویل پر 60% سبسڈی۔ بجلی کی قیمت میں نمایاں کمی۔',
-    eligibility: { maxLandAcres: 25, requiresCNIC: true, province: 'Punjab' },
-    benefits: '60% subsidy on installation cost',
-    benefitsUrdu: 'تنصیب پر 60% سبسڈی',
-    link: 'https://www.agripunjab.gov.pk/',
-    emoji: '☀️'
-  },
-  {
-    id: 'tractor_scheme',
-    name: 'Green Tractor Scheme', nameUrdu: 'گرین ٹریکٹر اسکیم',
-    category: 'scheme',
-    provider: 'Govt of Punjab',
-    description: 'Subsidized tractors for small farmers. Buy tractors at below-market rates with easy installments.',
-    descriptionUrdu: 'چھوٹے کسانوں کے لیے سبسڈی والے ٹریکٹر۔',
-    eligibility: { maxLandAcres: 25, requiresCNIC: true, province: 'Punjab' },
-    benefits: 'PKR 300,000-500,000 subsidy',
-    benefitsUrdu: '3-5 لاکھ سبسڈی',
-    link: 'https://www.agripunjab.gov.pk/',
-    emoji: '🚜'
-  },
-  {
-    id: 'bisp',
-    name: 'BISP / Ehsaas Agriculture', nameUrdu: 'بی آئی ایس پی / احساس زرعی',
-    category: 'subsidy',
-    provider: 'Federal Govt',
-    description: 'Quarterly cash transfers for small farmers registered in BISP database.',
-    descriptionUrdu: 'چھوٹے کسانوں کے لیے سہ ماہی نقد ترسیل۔',
-    eligibility: { maxLandAcres: 5, requiresCNIC: true, province: null, needsBISP: true },
-    benefits: 'PKR 25,000 per quarter',
-    benefitsUrdu: 'فی سہ ماہی 25,000 روپے',
-    link: 'https://www.bisp.gov.pk/',
-    emoji: '💵'
-  }
-];
+import { FiBook, FiArrowLeft, FiExternalLink, FiCheckCircle, FiXCircle, FiAlertCircle, FiClock } from 'react-icons/fi';
+import { subsidyAPI } from '../services/api';
 
 export default function Subsidies() {
   const { i18n } = useTranslation();
   const isUrdu = i18n.language === 'ur';
   const [filter, setFilter] = useState('all');
   const [check, setCheck] = useState({ landAcres: '', province: '', hasCNIC: true, onBISP: false });
+  const [schemes, setSchemes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const filtered = filter === 'all' ? SCHEMES : SCHEMES.filter(s => s.category === filter);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    subsidyAPI.list()
+      .then(res => {
+        if (cancelled) return;
+        setSchemes(Array.isArray(res.data?.data) ? res.data.data : []);
+        setError(null);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setError(err.response?.data?.message || err.message || 'Failed to load subsidies');
+        setSchemes([]);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const filtered = filter === 'all' ? schemes : schemes.filter(s => s.category === filter);
 
   const checkEligibility = (scheme) => {
-    const e = scheme.eligibility;
+    const e = scheme.eligibility || {};
     const land = parseFloat(check.landAcres) || 0;
     if (!check.landAcres) return null;
     if (e.requiresCNIC && !check.hasCNIC) return { eligible: false, reason: isUrdu ? 'شناختی کارڈ درکار' : 'CNIC required' };
@@ -128,6 +43,13 @@ export default function Subsidies() {
     if (e.province && check.province && check.province !== e.province) return { eligible: false, reason: isUrdu ? `صرف ${e.province}` : `${e.province} only` };
     if (e.needsBISP && !check.onBISP) return { eligible: false, reason: isUrdu ? 'BISP درکار' : 'BISP required' };
     return { eligible: true };
+  };
+
+  const formatVerifiedDate = (d) => {
+    if (!d) return null;
+    try {
+      return new Date(d).toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch { return null; }
   };
 
   return (
@@ -196,43 +118,74 @@ export default function Subsidies() {
       </div>
 
       {/* Schemes List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map(s => {
-          const e = check.landAcres ? checkEligibility(s) : null;
-          return (
-            <div key={s.id} className="bg-white rounded-2xl border border-gray-100 hover:shadow-md p-5 transition">
-              <div className="flex items-start gap-3 mb-3">
-                <span className="text-4xl">{s.emoji}</span>
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-800">{isUrdu ? s.nameUrdu : s.name}</h3>
-                  <p className="text-xs text-gray-500">{s.provider}</p>
+      {loading && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+          <div className="animate-spin h-8 w-8 border-2 border-green-500 border-t-transparent rounded-full mx-auto" />
+          <p className="text-sm text-gray-500 mt-3">{isUrdu ? 'لوڈ ہو رہا ہے…' : 'Loading schemes from server…'}</p>
+        </div>
+      )}
+
+      {error && !loading && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-5 flex items-start gap-3">
+          <FiAlertCircle className="text-red-600 shrink-0 mt-0.5" size={20} />
+          <div>
+            <p className="text-sm font-semibold text-red-900">{isUrdu ? 'لوڈ ناکام' : 'Failed to load'}</p>
+            <p className="text-xs text-red-700 mt-1">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && filtered.length === 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+          <p className="text-gray-500">{isUrdu ? 'کوئی اسکیم نہیں ملی' : 'No schemes available yet'}</p>
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filtered.map(s => {
+            const e = check.landAcres ? checkEligibility(s) : null;
+            const verifiedOn = formatVerifiedDate(s.lastVerifiedAt);
+            return (
+              <div key={s._id} className="bg-white rounded-2xl border border-gray-100 hover:shadow-md p-5 transition">
+                <div className="flex items-start gap-3 mb-3">
+                  <span className="text-4xl">{s.emoji || '📋'}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-800">{isUrdu ? (s.nameUrdu || s.name) : s.name}</h3>
+                    <p className="text-xs text-gray-500">{s.provider}</p>
+                  </div>
+                  {e && (
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${e.eligible ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {e.eligible ? <><FiCheckCircle className="inline" size={12} /> {isUrdu ? 'اہل' : 'Eligible'}</> : <><FiXCircle className="inline" size={12} /> {e.reason}</>}
+                    </span>
+                  )}
                 </div>
-                {e && (
-                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${e.eligible ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {e.eligible ? <><FiCheckCircle className="inline" size={12} /> {isUrdu ? 'اہل' : 'Eligible'}</> : <><FiXCircle className="inline" size={12} /> {e.reason}</>}
-                  </span>
+                <p className="text-sm text-gray-600 leading-relaxed mb-3">
+                  {isUrdu ? (s.descriptionUrdu || s.description) : s.description}
+                </p>
+                <div className="bg-green-50 border border-green-100 rounded-lg p-3 mb-3">
+                  <p className="text-xs font-semibold text-green-800">
+                    💎 {isUrdu ? 'فائدہ' : 'Benefit'}
+                  </p>
+                  <p className="text-sm font-bold text-green-700 mt-1">
+                    {isUrdu ? (s.benefitsUrdu || s.benefits) : s.benefits}
+                  </p>
+                </div>
+                {verifiedOn && (
+                  <p className="text-[10.5px] text-gray-400 flex items-center gap-1 mb-2">
+                    <FiClock size={10} /> {isUrdu ? 'آخری تصدیق:' : 'Last verified:'} {verifiedOn}
+                  </p>
                 )}
+                <a href={s.link} target="_blank" rel="noreferrer">
+                  <Button icon={FiExternalLink} variant="outline" className="w-full">
+                    {isUrdu ? 'درخواست دیں' : 'Apply Now'}
+                  </Button>
+                </a>
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed mb-3">
-                {isUrdu ? s.descriptionUrdu : s.description}
-              </p>
-              <div className="bg-green-50 border border-green-100 rounded-lg p-3 mb-3">
-                <p className="text-xs font-semibold text-green-800">
-                  💎 {isUrdu ? 'فائدہ' : 'Benefit'}
-                </p>
-                <p className="text-sm font-bold text-green-700 mt-1">
-                  {isUrdu ? s.benefitsUrdu : s.benefits}
-                </p>
-              </div>
-              <a href={s.link} target="_blank" rel="noreferrer">
-                <Button icon={FiExternalLink} variant="outline" className="w-full">
-                  {isUrdu ? 'درخواست دیں' : 'Apply Now'}
-                </Button>
-              </a>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Info */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex items-start gap-3">
