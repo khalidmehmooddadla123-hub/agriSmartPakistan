@@ -101,6 +101,10 @@ app.use('/api/tools', require('./routes/tools'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/marketplace', require('./routes/marketplace'));
 app.use('/api/forum', require('./routes/forum'));
+app.use('/api/farms', require('./routes/farms'));
+app.use('/api/calendar', require('./routes/calendar'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/uploads', require('./routes/uploads'));
 app.use('/uploads', require('express').static(require('path').join(__dirname, 'uploads')));
 
 // Root — friendly welcome page

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { expenseAPI } from '../services/api';
 import { Input, Select, Button, Card, StatBox, Textarea } from '../components/ui/FormControls';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { FiDollarSign, FiPlus, FiTrash2, FiTrendingUp, FiTrendingDown, FiPackage, FiX } from 'react-icons/fi';
+import { FiDollarSign, FiPlus, FiTrash2, FiTrendingUp, FiTrendingDown, FiPackage, FiX, FiFileText } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const CATEGORIES = [
@@ -105,9 +105,28 @@ export default function ExpenseTracker() {
               {isUrdu ? 'ہر روپیہ ٹریک کریں اور اصل منافع دیکھیں' : 'Track every rupee, see real profit margins'}
             </p>
           </div>
-          <Button onClick={() => setShowForm(true)} icon={FiPlus} variant="outline" className="bg-white text-red-600 hover:bg-red-50 border-white text-xs sm:text-sm shrink-0">
-            {isUrdu ? 'ریکارڈ' : 'Add'}
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => {
+                const apiBase = (import.meta.env.VITE_API_URL || '/api');
+                const token = localStorage.getItem('token');
+                const url = `${apiBase}/reports/annual?year=${year}`;
+                fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+                  .then(r => r.text())
+                  .then(html => {
+                    const blob = new Blob([html], { type: 'text/html' });
+                    window.open(URL.createObjectURL(blob), '_blank');
+                  })
+                  .catch(() => toast.error(isUrdu ? 'رپورٹ ناکام' : 'Report failed'));
+              }}
+              className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 backdrop-blur border border-white/20 text-white px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition"
+            >
+              <FiFileText size={14} /> <span className="hidden sm:inline">{isUrdu ? 'سالانہ رپورٹ' : 'Annual Report'}</span><span className="sm:hidden">PDF</span>
+            </button>
+            <Button onClick={() => setShowForm(true)} icon={FiPlus} variant="outline" className="bg-white text-red-600 hover:bg-red-50 border-white text-xs sm:text-sm">
+              {isUrdu ? 'ریکارڈ' : 'Add'}
+            </Button>
+          </div>
         </div>
       </div>
 

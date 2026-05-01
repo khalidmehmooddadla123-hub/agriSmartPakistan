@@ -178,6 +178,24 @@ export const marketplaceAPI = {
   delete: (id) => api.delete(`/marketplace/${id}`),
 };
 
+// Calendar
+export const calendarAPI = {
+  list: () => api.get('/calendar'),
+};
+
+// Farms
+export const farmAPI = {
+  list: () => api.get('/farms'),
+  get: (id) => api.get(`/farms/${id}`),
+  create: (data) => api.post('/farms', data),
+  update: (id, data) => api.put(`/farms/${id}`, data),
+  delete: (id) => api.delete(`/farms/${id}`),
+  summary: (id) => api.get(`/farms/${id}/summary`),
+  addCrop: (id, data) => api.post(`/farms/${id}/crops`, data),
+  updateCrop: (id, cropId, data) => api.put(`/farms/${id}/crops/${cropId}`, data),
+  removeCrop: (id, cropId) => api.delete(`/farms/${id}/crops/${cropId}`),
+};
+
 // Forum
 export const forumAPI = {
   list: (params) => api.get('/forum', { params }),

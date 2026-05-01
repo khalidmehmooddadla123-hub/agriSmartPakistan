@@ -6,6 +6,7 @@
     "disease": "بیماری اسکینر", "map": "فصل کا نقشہ", "admin": "ایڈمن پینل", "login": "لاگ ان",
     "tools": "کسان ٹولز", "expenses": "اخراجات",
     "marketplace": "بازار", "subsidies": "سبسڈیز", "forum": "کمیونٹی",
+    "farms": "میرے فارم", "calendar": "فصل کیلنڈر",
     "register": "رجسٹر", "logout": "لاگ آؤٹ", "language": "زبان"
   },
   "auth": {

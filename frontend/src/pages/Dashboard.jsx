@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { priceAPI, weatherAPI, newsAPI, recommendationAPI, outbreakAPI } from '../services/api';
+import { priceAPI, weatherAPI, newsAPI, recommendationAPI, outbreakAPI, farmAPI } from '../services/api';
 import {
   FiTrendingUp, FiTrendingDown, FiDroplet, FiWind,
   FiArrowRight, FiBarChart2, FiSearch, FiTool, FiShoppingCart, FiMessageSquare
@@ -13,6 +13,23 @@ import { SkeletonDashboard } from '../components/ui/Skeleton';
 export default function Dashboard() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect to onboarding if user has no farms and hasn't skipped
+  useEffect(() => {
+    if (!user) return;
+    if (localStorage.getItem('onboarded') === 'true') return;
+    farmAPI.list()
+      .then(res => {
+        if ((res.data.data || []).length === 0) {
+          navigate('/onboarding', { replace: true });
+        } else {
+          localStorage.setItem('onboarded', 'true');
+        }
+      })
+      .catch(() => {});
+  }, [user, navigate]);
+
   const [prices, setPrices] = useState([]);
   const [weather, setWeather] = useState(null);
   const [news, setNews] = useState([]);

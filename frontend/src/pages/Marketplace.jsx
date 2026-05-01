@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { marketplaceAPI } from '../services/api';
 import { Input, Select, Button, Card, Textarea } from '../components/ui/FormControls';
+import ImageUploader from '../components/ui/ImageUploader';
 import { FiShoppingCart, FiPlus, FiMapPin, FiPhone, FiMail, FiEye, FiX, FiSearch, FiPackage } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -20,7 +21,7 @@ export default function Marketplace() {
     cropName: 'Wheat', title: '', description: '',
     quantity: '', unit: 'Maund', pricePerUnit: '',
     quality: 'standard', harvestDate: '', readyBy: '',
-    contactPreference: 'all'
+    contactPreference: 'all', images: []
   });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -152,12 +153,21 @@ export default function Marketplace() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {(tab === 'browse' ? listings : myListings).map((l) => (
+          {(tab === 'browse' ? listings : myListings).map((l) => {
+            const apiBase = (import.meta.env.VITE_API_URL || '/api').replace(/\/api$/, '');
+            const firstImage = l.images?.[0];
+            const imgUrl = firstImage ? (firstImage.startsWith('http') ? firstImage : `${apiBase}${firstImage}`) : null;
+            return (
             <div key={l._id}
               className="bg-white rounded-2xl border border-gray-100 hover:shadow-lg hover:border-green-200 transition-all overflow-hidden">
+              {imgUrl && (
+                <div className="aspect-video bg-gray-100 overflow-hidden">
+                  <img src={imgUrl} alt={l.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                </div>
+              )}
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
-                  <span className="text-3xl">🌾</span>
+                  <span className="text-3xl">{imgUrl ? '🌾' : '🌾'}</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${qualityBadge[l.quality]?.color}`}>
                     {isUrdu ? qualityBadge[l.quality]?.ur : qualityBadge[l.quality]?.en}
                   </span>
@@ -201,7 +211,8 @@ export default function Marketplace() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -233,6 +244,12 @@ export default function Marketplace() {
               <Textarea label={isUrdu ? 'تفصیل' : 'Description'} rows={3}
                 value={form.description} onChange={set('description')}
                 placeholder={isUrdu ? 'فصل کی معیار، مقام، وغیرہ' : 'Quality details, location info, etc.'} />
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+                  {isUrdu ? '📸 تصویریں (5 تک)' : '📸 Photos (up to 5)'}
+                </label>
+                <ImageUploader value={form.images} onChange={(urls) => setForm({ ...form, images: urls })} max={5} />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <Input label={isUrdu ? 'کٹائی کی تاریخ' : 'Harvest Date'} type="date" value={form.harvestDate} onChange={set('harvestDate')} />
                 <Input label={isUrdu ? 'ڈلیوری کب' : 'Ready By'} type="date" value={form.readyBy} onChange={set('readyBy')} />

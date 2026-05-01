@@ -9,6 +9,8 @@ const { sendPriceAlert, sendWeatherAlert } = require('./notificationService');
 const { sendDailyDigests } = require('./digestService');
 const { checkHarvestReminders } = require('./harvestReminder');
 const { detectOutbreaks } = require('./outbreakDetector');
+const { getTomorrowMilestones } = require('./cropCalendarService');
+const { sendNotification } = require('./notificationService');
 
 // Refresh weather data every 30 minutes
 cron.schedule('*/30 * * * *', async () => {
@@ -215,6 +217,36 @@ cron.schedule('0 */2 * * *', async () => {
   console.log('[CRON] Running pest outbreak detection...');
   await detectOutbreaks();
 });
+
+// STEP 6: Crop Calendar Milestone Reminders — every day at 7:30 AM PKT
+cron.schedule('30 7 * * *', async () => {
+  console.log('[CRON] Sending crop calendar milestone reminders...');
+  try {
+    const tomorrows = await getTomorrowMilestones();
+    let sent = 0;
+    for (const item of tomorrows) {
+      const isUrdu = item.user.language === 'ur';
+      const cropName = isUrdu ? (item.cropNameUrdu || item.cropName) : item.cropName;
+      const action = isUrdu ? item.milestone.labelUrdu : item.milestone.label;
+
+      try {
+        await sendNotification(item.user._id, {
+          type: 'broadcast',
+          title: isUrdu ? `📅 کل: ${action}` : `📅 Tomorrow: ${action}`,
+          message: isUrdu
+            ? `آپ کے فارم "${item.farmName}" پر ${cropName} کے لیے کل ${action} کرنا ہے۔ ${item.milestone.icon}`
+            : `On your farm "${item.farmName}", ${cropName} needs ${action} tomorrow. ${item.milestone.icon}`
+        });
+        sent++;
+      } catch (err) {
+        console.error('[CRON] Calendar reminder failed:', err.message);
+      }
+    }
+    console.log(`[CRON] Calendar reminders sent: ${sent}/${tomorrows.length}`);
+  } catch (error) {
+    console.error('[CRON] Calendar reminder error:', error.message);
+  }
+}, { timezone: 'Asia/Karachi' });
 
 console.log('[CRON] Scheduled jobs initialized');
 console.log('[CRON] Active jobs:');

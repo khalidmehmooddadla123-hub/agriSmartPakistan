@@ -27,6 +27,10 @@ import Subsidies from './pages/Subsidies';
 import LandingPage from './pages/LandingPage';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
+import Farms from './pages/Farms';
+import FarmDetail from './pages/FarmDetail';
+import CropCalendar from './pages/CropCalendar';
+import Onboarding from './pages/Onboarding';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -75,6 +79,10 @@ export default function App() {
           <Route path="/marketplace" element={<ProtectedRoute><Marketplace /></ProtectedRoute>} />
           <Route path="/forum" element={<ProtectedRoute><Forum /></ProtectedRoute>} />
           <Route path="/subsidies" element={<ProtectedRoute><Subsidies /></ProtectedRoute>} />
+          <Route path="/farms" element={<ProtectedRoute><Farms /></ProtectedRoute>} />
+          <Route path="/farms/:id" element={<ProtectedRoute><FarmDetail /></ProtectedRoute>} />
+          <Route path="/calendar" element={<ProtectedRoute><CropCalendar /></ProtectedRoute>} />
+          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/admin/*" element={<AdminRoute><AdminPanel /></AdminRoute>} />
         </Route>

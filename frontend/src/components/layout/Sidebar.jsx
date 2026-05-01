@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import {
   FiHome, FiDollarSign, FiCloud, FiFileText, FiBell, FiUser, FiSettings,
-  FiX, FiSearch, FiMap, FiTool, FiShoppingCart, FiMessageSquare, FiCreditCard, FiLogOut
+  FiX, FiSearch, FiMap, FiTool, FiShoppingCart, FiMessageSquare, FiCreditCard, FiLogOut,
+  FiCalendar, FiPackage, FiFile
 } from 'react-icons/fi';
 
 const navSections = [
@@ -16,6 +17,14 @@ const navSections = [
       { path: '/weather', icon: FiCloud, labelKey: 'nav.weather' },
       { path: '/map', icon: FiMap, labelKey: 'nav.map' },
       { path: '/news', icon: FiFileText, labelKey: 'nav.news' },
+    ]
+  },
+  {
+    title: 'My Farms',
+    titleUr: 'میرے فارم',
+    items: [
+      { path: '/farms', icon: FiPackage, labelKey: 'nav.farms' },
+      { path: '/calendar', icon: FiCalendar, labelKey: 'nav.calendar' },
     ]
   },
   {
