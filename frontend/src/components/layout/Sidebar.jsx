@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   FiHome, FiDollarSign, FiCloud, FiFileText, FiBell, FiUser, FiSettings,
   FiX, FiSearch, FiMap, FiTool, FiShoppingCart, FiMessageSquare, FiCreditCard, FiLogOut,
-  FiCalendar, FiPackage, FiFile
+  FiCalendar, FiPackage, FiFile, FiActivity, FiTruck, FiHelpCircle
 } from 'react-icons/fi';
 
 const navSections = [
@@ -25,6 +25,7 @@ const navSections = [
     items: [
       { path: '/farms', icon: FiPackage, labelKey: 'nav.farms' },
       { path: '/calendar', icon: FiCalendar, labelKey: 'nav.calendar' },
+      { path: '/soil-tests', icon: FiActivity, labelKey: 'nav.soilTests' },
     ]
   },
   {
@@ -41,6 +42,7 @@ const navSections = [
     items: [
       { path: '/expenses', icon: FiDollarSign, labelKey: 'nav.expenses' },
       { path: '/marketplace', icon: FiShoppingCart, labelKey: 'nav.marketplace' },
+      { path: '/equipment', icon: FiTruck, labelKey: 'nav.equipment' },
       { path: '/subsidies', icon: FiCreditCard, labelKey: 'nav.subsidies' },
     ]
   },
@@ -50,6 +52,7 @@ const navSections = [
     items: [
       { path: '/forum', icon: FiMessageSquare, labelKey: 'nav.forum' },
       { path: '/notifications', icon: FiBell, labelKey: 'nav.notifications' },
+      { path: '/help', icon: FiHelpCircle, labelKey: 'nav.help' },
     ]
   },
 ];

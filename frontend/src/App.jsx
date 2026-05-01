@@ -31,6 +31,9 @@ import Farms from './pages/Farms';
 import FarmDetail from './pages/FarmDetail';
 import CropCalendar from './pages/CropCalendar';
 import Onboarding from './pages/Onboarding';
+import SoilTests from './pages/SoilTests';
+import Equipment from './pages/Equipment';
+import Help from './pages/Help';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -83,6 +86,9 @@ export default function App() {
           <Route path="/farms/:id" element={<ProtectedRoute><FarmDetail /></ProtectedRoute>} />
           <Route path="/calendar" element={<ProtectedRoute><CropCalendar /></ProtectedRoute>} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+          <Route path="/soil-tests" element={<ProtectedRoute><SoilTests /></ProtectedRoute>} />
+          <Route path="/equipment" element={<ProtectedRoute><Equipment /></ProtectedRoute>} />
+          <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/admin/*" element={<AdminRoute><AdminPanel /></AdminRoute>} />
         </Route>

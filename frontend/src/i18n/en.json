@@ -7,7 +7,8 @@
     "register": "Register", "logout": "Logout", "language": "Language",
     "tools": "Farm Tools", "expenses": "Expense Tracker", "marketplace": "Marketplace",
     "subsidies": "Subsidies", "forum": "Community",
-    "farms": "My Farms", "calendar": "Crop Calendar"
+    "farms": "My Farms", "calendar": "Crop Calendar",
+    "soilTests": "Soil Tests", "equipment": "Equipment Rental", "help": "Help & FAQ"
   },
   "auth": {
     "loginTitle": "Welcome Back", "loginSubtitle": "Sign in to your AgriSmart360 account",

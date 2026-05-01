@@ -7,6 +7,7 @@
     "tools": "کسان ٹولز", "expenses": "اخراجات",
     "marketplace": "بازار", "subsidies": "سبسڈیز", "forum": "کمیونٹی",
     "farms": "میرے فارم", "calendar": "فصل کیلنڈر",
+    "soilTests": "مٹی ٹیسٹ", "equipment": "مشینری کرایہ", "help": "مدد",
     "register": "رجسٹر", "logout": "لاگ آؤٹ", "language": "زبان"
   },
   "auth": {
